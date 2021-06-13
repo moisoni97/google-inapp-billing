@@ -1,0 +1,3 @@
+rootProject.name = "Google InApp Billing"
+include ':app'
+include ':google-iab'
