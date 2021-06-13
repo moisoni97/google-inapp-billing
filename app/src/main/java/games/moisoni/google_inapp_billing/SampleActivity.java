@@ -1,0 +1,295 @@
+package games.moisoni.google_inapp_billing;
+
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.github.hariprasanths.bounceview.BounceView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import games.moisoni.google_iab.BillingConnector;
+import games.moisoni.google_iab.BillingEventListener;
+import games.moisoni.google_iab.enums.PurchasedResult;
+import games.moisoni.google_iab.enums.SupportState;
+import games.moisoni.google_iab.models.BillingResponse;
+import games.moisoni.google_iab.models.PurchaseInfo;
+import games.moisoni.google_iab.models.SkuInfo;
+
+/**
+ * This is a sample app to demonstrate how to implement 'google-inapp-billing' library
+ * <p>
+ * This standalone app won't work because it's just for reference
+ * <p>
+ * To see real results, you need to implement the below code into a real project
+ * released on Play Console and create your own in-app products ids
+ */
+public class SampleActivity extends AppCompatActivity {
+
+    private ImageView exit_app;
+    private RelativeLayout purchase_consumable, purchase_non_consumable, purchase_subscription;
+
+    private BillingConnector billingConnector;
+
+    //list for example purposes to demonstrate how to manually acknowledge or consume purchases
+    private final List<PurchaseInfo> purchaseInfoList = new ArrayList<>();
+
+    //list for example purposes to demonstrate how to check a purchase state
+    private final List<SkuInfo> skuInfoList = new ArrayList<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.AppTheme);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_layout);
+
+        initViews();
+        initializeBillingClient();
+        clickListeners();
+
+        //check this method to learn how to implement useful public methods provided by 'google-inapp-billing' library
+        usefulPublicMethods();
+    }
+
+    private void initializeBillingClient() {
+        //create a list with consumable ids
+        List<String> consumableIds = new ArrayList<>();
+        consumableIds.add("consumable_id1");
+        consumableIds.add("consumable_id2");
+        consumableIds.add("consumable_id3");
+
+        //create a list with non-consumable ids
+        List<String> nonConsumableIds = new ArrayList<>();
+        nonConsumableIds.add("non_consumable_id1");
+        nonConsumableIds.add("non_consumable_id2");
+        nonConsumableIds.add("non_consumable_id3");
+
+        //create a list with subscription ids
+        List<String> subscriptionIds = new ArrayList<>();
+        subscriptionIds.add("subscription_id1");
+        subscriptionIds.add("subscription_id2");
+        subscriptionIds.add("subscription_id3");
+
+        billingConnector = new BillingConnector(this, "license_key") //"license_key" - public developer key from Play Console
+                .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
+                .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
+                .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
+                .autoAcknowledge() //legacy option - better call this. Alternatively purchases can be acknowledge via public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
+                .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via public method consumePurchase(PurchaseInfo purchaseInfo)"
+                .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
+                .connect(); //to connect billing client with Play Console
+
+        billingConnector.setBillingEventListener(new BillingEventListener() {
+            @Override
+            public void onProductsFetched(@NonNull List<SkuInfo> skuDetails) {
+                String sku;
+
+                for (SkuInfo skuInfo : skuDetails) {
+                    sku = skuInfo.getSkuId();
+
+                    if (sku.equalsIgnoreCase("consumable_id1")) {
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product fetched:  " + sku);
+                        Toast.makeText(SampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
+                    }
+
+                    //TODO - similarly check for other ids
+                }
+            }
+
+            @Override
+            public void onPurchasedProductsFetched(@NonNull List<PurchaseInfo> purchases) {
+                String purchase;
+
+                for (PurchaseInfo purchaseInfo : purchases) {
+                    purchase = purchaseInfo.getSkuId();
+
+                    if (purchase.equalsIgnoreCase("non_consumable_id2")) {
+                        //TODO - do something
+                        Log.d("BillingConnector", "Purchased product fetched: " + purchase);
+                        Toast.makeText(SampleActivity.this, "Purchased product fetched: " + purchase, Toast.LENGTH_SHORT).show();
+                    }
+
+                    //TODO - similarly check for other ids
+
+                    skuInfoList.add(purchaseInfo.getSkuInfo()); //check "usefulPublicMethods" to see what's going on with this list
+                }
+            }
+
+            @Override
+            public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
+                String purchase;
+
+                for (PurchaseInfo purchaseInfo : purchases) {
+                    purchase = purchaseInfo.getSkuId();
+
+                    if (purchase.equalsIgnoreCase("subscription_id3")) {
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product purchased: " + purchase);
+                        Toast.makeText(SampleActivity.this, "Product purchased: " + purchase, Toast.LENGTH_SHORT).show();
+                    }
+
+                    //TODO - similarly check for other ids
+                }
+
+                purchaseInfoList.addAll(purchases); //check "usefulPublicMethods" to see what's going on with this list
+            }
+
+            @Override
+            public void onPurchaseAcknowledged(@NonNull PurchaseInfo purchase) {
+                String acknowledgedSku = purchase.getSkuId();
+
+                if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
+                    //TODO - do something
+                    Log.d("BillingConnector", "Acknowledge: " + acknowledgedSku);
+                    Toast.makeText(SampleActivity.this, "Acknowledge: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
+                }
+
+                //TODO - similarly check for other ids
+            }
+
+            @Override
+            public void onPurchaseConsumed(@NonNull PurchaseInfo purchase) {
+                String consumedSku = purchase.getSkuId();
+
+                if (consumedSku.equalsIgnoreCase("consumable_id1")) {
+                    //TODO - do something
+                    Log.d("BillingConnector", "Consumed: " + consumedSku);
+                    Toast.makeText(SampleActivity.this, "Consumed: " + consumedSku, Toast.LENGTH_SHORT).show();
+                }
+
+                //TODO - similarly check for other ids
+            }
+
+            @Override
+            public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
+                switch (response.getErrorType()) {
+                    case CLIENT_NOT_READY:
+                        //TODO - client is not ready
+                        break;
+                    case CLIENT_DISCONNECTED:
+                        //TODO - client has disconnected
+                        break;
+                    case ITEM_NOT_EXIST:
+                        //TODO - item doesn't exist
+                        break;
+                    case ITEM_ALREADY_OWNED:
+                        //TODO - item is already owned
+                        break;
+                    case ACKNOWLEDGE_ERROR:
+                        //TODO - error during acknowledgment
+                        break;
+                    case CONSUME_ERROR:
+                        //TODO - error during consumption
+                        break;
+                    case FETCH_PURCHASED_PRODUCTS_ERROR:
+                        //TODO - error occurs while querying purchases
+                        break;
+                    case BILLING_ERROR:
+                        //TODO - error occurs during initialization / querying sku details
+                        break;
+                }
+
+                Log.d("BillingConnector", "Error type: " + response.getErrorType() +
+                        " Response code: " + response.getResponseCode() + " Message: " + response.getMessage());
+
+                Toast.makeText(SampleActivity.this, "Error type: " + response.getErrorType() +
+                        " Response code: " + response.getResponseCode() + " Message: " + response.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void initViews() {
+        //init purchase buttons
+        purchase_consumable = findViewById(R.id.purchase_consumable);
+        purchase_non_consumable = findViewById(R.id.purchase_non_consumable);
+        purchase_subscription = findViewById(R.id.purchase_subscription);
+
+        //init exit app button
+        exit_app = findViewById(R.id.exit_app);
+
+        //add bounce view animation to clickable views
+        BounceView.addAnimTo(purchase_consumable);
+        BounceView.addAnimTo(purchase_non_consumable);
+        BounceView.addAnimTo(purchase_subscription);
+        BounceView.addAnimTo(exit_app);
+    }
+
+    private void clickListeners() {
+        //make purchase on button click
+        purchase_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "consumable_id1"));
+        purchase_non_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "non_consumable_id2"));
+        purchase_subscription.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "subscription_id3"));
+
+        //exit app on button click
+        exit_app.setOnClickListener(v -> finish());
+    }
+
+    private void usefulPublicMethods() {
+        /*
+         * public final boolean isReady() - returns the state of the billing client
+         * */
+        if (billingConnector.isReady()) {
+            //TODO - do something
+            Log.d("BillingConnector", "Billing client is ready");
+        }
+
+        /*
+         * public SupportState isSubscriptionSupported() - to check device-support for subscriptions (not all devices support subscriptions)
+         * */
+        if (billingConnector.isSubscriptionSupported() == SupportState.SUPPORTED) {
+            //TODO - do something
+            Log.d("BillingConnector", "Device subscription support: SUPPORTED");
+        } else if (billingConnector.isSubscriptionSupported() == SupportState.NOT_SUPPORTED) {
+            //TODO - do something
+            Log.d("BillingConnector", "Device subscription support: NOT_SUPPORTED");
+        } else if (billingConnector.isSubscriptionSupported() == SupportState.DISCONNECTED) {
+            //TODO - do something
+            Log.d("BillingConnector", "Device subscription support: client DISCONNECTED");
+        }
+
+        /*
+         * public final PurchasedResult isPurchased(SkuInfo skuInfo) - to synchronously check a purchase state
+         * */
+        for (SkuInfo skuInfo : skuInfoList) {
+            if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
+                //TODO - do something
+                Log.d("BillingConnector", "The SKU: " + skuInfo.getSkuId() + " is purchased");
+            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.NO) {
+                //TODO - do something
+                Log.d("BillingConnector", "The SKU: " + skuInfo.getSkuId() + " is not purchased");
+            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.CLIENT_NOT_READY) {
+                //TODO - do something
+                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSkuId() + " because client is not ready");
+            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
+                //TODO - do something
+                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSkuId() + " because purchased products are not fetched yet");
+            }
+        }
+
+        /*
+         * public void consumePurchase(PurchaseInfo purchaseInfo) - to consume purchases when .autoConsume() is missing from the constructor
+         * */
+        for (PurchaseInfo purchaseInfo : purchaseInfoList) {
+            billingConnector.consumePurchase(purchaseInfo);
+        }
+
+        /*
+         * public void acknowledgePurchase(PurchaseInfo purchaseInfo) - to acknowledge purchases when .autoAcknowledge() is missing from the constructor
+         * */
+        for (PurchaseInfo purchaseInfo : purchaseInfoList) {
+            billingConnector.acknowledgePurchase(purchaseInfo);
+        }
+
+        /*
+         * public final void purchase(Activity activity, String skuId) - to make a purchase
+         * */
+        billingConnector.purchase(SampleActivity.this, "sku_id");
+    }
+}
