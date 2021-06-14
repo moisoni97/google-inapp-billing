@@ -186,7 +186,7 @@ public class BillingConnector {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY, "Client is not ready yet", defaultResponseCode)));
         } else if (skuId != null && fetchedSkuInfoList.stream().noneMatch(it -> it.getSkuId().equals(skuId))) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_NOT_EXIST,
-                    "The SKU id: " + skuId + " doesn't seem to exist on Google Play", defaultResponseCode)));
+                    "The SKU id: " + skuId + " doesn't seem to exist on Play Console", defaultResponseCode)));
         } else return isReady();
 
         return false;
@@ -269,7 +269,7 @@ public class BillingConnector {
                                 querySkuDetails(INAPP, temperInAppIds);
                             }
 
-                            //query subscriptions SKU details
+                            //query subscription SKU details
                             if (subscriptionIds != null) {
                                 querySkuDetails(SUBS, subscriptionIds);
                             }
