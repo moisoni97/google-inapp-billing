@@ -38,10 +38,10 @@ public class SampleActivity extends AppCompatActivity {
     private BillingConnector billingConnector;
 
     //list for example purposes to demonstrate how to manually acknowledge or consume purchases
-    private final List<PurchaseInfo> purchaseInfoList = new ArrayList<>();
+    private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
 
     //list for example purposes to demonstrate how to check a purchase state
-    private final List<SkuInfo> skuInfoList = new ArrayList<>();
+    private final List<SkuInfo> fetchedSkuInfoList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +100,8 @@ public class SampleActivity extends AppCompatActivity {
                     }
 
                     //TODO - similarly check for other ids
+
+                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see what's going on with this list
                 }
             }
 
@@ -117,8 +119,6 @@ public class SampleActivity extends AppCompatActivity {
                     }
 
                     //TODO - similarly check for other ids
-
-                    skuInfoList.add(purchaseInfo.getSkuInfo()); //check "usefulPublicMethods" to see what's going on with this list
                 }
             }
 
@@ -138,7 +138,7 @@ public class SampleActivity extends AppCompatActivity {
                     //TODO - similarly check for other ids
                 }
 
-                purchaseInfoList.addAll(purchases); //check "usefulPublicMethods" to see what's going on with this list
+                purchasedInfoList.addAll(purchases); //check "usefulPublicMethods" to see what's going on with this list
             }
 
             @Override
@@ -257,7 +257,7 @@ public class SampleActivity extends AppCompatActivity {
         /*
          * public final PurchasedResult isPurchased(SkuInfo skuInfo) - to synchronously check a purchase state
          * */
-        for (SkuInfo skuInfo : skuInfoList) {
+        for (SkuInfo skuInfo : fetchedSkuInfoList) {
             if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
                 //TODO - do something
                 Log.d("BillingConnector", "The SKU: " + skuInfo.getSkuId() + " is purchased");
@@ -276,14 +276,14 @@ public class SampleActivity extends AppCompatActivity {
         /*
          * public void consumePurchase(PurchaseInfo purchaseInfo) - to consume purchases when .autoConsume() is missing from the constructor
          * */
-        for (PurchaseInfo purchaseInfo : purchaseInfoList) {
+        for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.consumePurchase(purchaseInfo);
         }
 
         /*
          * public void acknowledgePurchase(PurchaseInfo purchaseInfo) - to acknowledge purchases when .autoAcknowledge() is missing from the constructor
          * */
-        for (PurchaseInfo purchaseInfo : purchaseInfoList) {
+        for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.acknowledgePurchase(purchaseInfo);
         }
 
