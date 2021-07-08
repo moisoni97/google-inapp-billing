@@ -52,9 +52,6 @@ public class SampleActivity extends AppCompatActivity {
         initViews();
         initializeBillingClient();
         clickListeners();
-
-        //check this method to learn how to implement useful public methods provided by 'google-inapp-billing' library
-        usefulPublicMethods();
     }
 
     private void initializeBillingClient() {
@@ -101,7 +98,7 @@ public class SampleActivity extends AppCompatActivity {
 
                     //TODO - similarly check for other ids
 
-                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see what's going on with this list
+                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see how to check a purchase state synchronously
                 }
             }
 
@@ -138,11 +135,23 @@ public class SampleActivity extends AppCompatActivity {
                     //TODO - similarly check for other ids
                 }
 
-                purchasedInfoList.addAll(purchases); //check "usefulPublicMethods" to see what's going on with this list
+                purchasedInfoList.addAll(purchases); //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
             }
 
             @Override
             public void onPurchaseAcknowledged(@NonNull PurchaseInfo purchase) {
+                /*
+                 * Grant user entitlement for NON-CONSUMABLE products and SUBSCRIPTIONS here
+                 *
+                 * Even though onProductsPurchased is triggered when a purchase is successfully made
+                 * there might be a problem along the way with the payment and the purchase won't be acknowledged
+                 *
+                 * Google will refund users purchases that aren't acknowledged in 3 days
+                 *
+                 * To ensure that all valid purchases are acknowledged the library will automatically
+                 * check and acknowledge all unacknowledged products at the startup
+                 * */
+
                 String acknowledgedSku = purchase.getSkuId();
 
                 if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
@@ -156,6 +165,10 @@ public class SampleActivity extends AppCompatActivity {
 
             @Override
             public void onPurchaseConsumed(@NonNull PurchaseInfo purchase) {
+                /*
+                 * CONSUMABLE products entitlement can be granted either here or in onProductsPurchased
+                 * */
+
                 String consumedSku = purchase.getSkuId();
 
                 if (consumedSku.equalsIgnoreCase("consumable_id1")) {
@@ -185,6 +198,17 @@ public class SampleActivity extends AppCompatActivity {
                     case ACKNOWLEDGE_ERROR:
                         //TODO - error during acknowledgment
                         break;
+                    case ACKNOWLEDGE_WARNING:
+                        /*
+                         * This will be triggered when a purchase can not be acknowledged because the state is PENDING
+                         * A purchase can be acknowledged only when the state is PURCHASED
+                         *
+                         * PENDING transactions usually occur when users choose cash as their form of payment
+                         *
+                         * Here users can be informed that it may take a while until the purchase completes
+                         * and to come back later to receive their purchase
+                         * */
+                        //TODO - warning during acknowledgment
                     case CONSUME_ERROR:
                         //TODO - error during consumption
                         break;
@@ -225,15 +249,22 @@ public class SampleActivity extends AppCompatActivity {
         //make purchase on button click
         purchase_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "consumable_id1"));
         purchase_non_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "non_consumable_id2"));
-        purchase_subscription.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "subscription_id3"));
+        purchase_subscription.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "subscription_id3")); //or billingConnector.subscribe(), billingConnector.unsubscribe()
 
         //exit app on button click
         exit_app.setOnClickListener(v -> finish());
     }
 
+    /*
+    * Check this method to learn how to implement useful public methods
+    * provided by 'google-inapp-billing' library
+    * */
+    @SuppressWarnings("unused")
     private void usefulPublicMethods() {
         /*
-         * public final boolean isReady() - returns the state of the billing client
+         * public final boolean isReady()
+         *
+         * Returns the state of the billing client
          * */
         if (billingConnector.isReady()) {
             //TODO - do something
@@ -241,7 +272,9 @@ public class SampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public SupportState isSubscriptionSupported() - to check device-support for subscriptions (not all devices support subscriptions)
+         * public SupportState isSubscriptionSupported()
+         *
+         * To check device-support for subscriptions (not all devices support subscriptions)
          * */
         if (billingConnector.isSubscriptionSupported() == SupportState.SUPPORTED) {
             //TODO - do something
@@ -255,7 +288,9 @@ public class SampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public final PurchasedResult isPurchased(SkuInfo skuInfo) - to synchronously check a purchase state
+         * public final PurchasedResult isPurchased(SkuInfo skuInfo)
+         *
+         * To synchronously check a purchase state
          * */
         for (SkuInfo skuInfo : fetchedSkuInfoList) {
             if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
@@ -274,22 +309,42 @@ public class SampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public void consumePurchase(PurchaseInfo purchaseInfo) - to consume purchases when .autoConsume() is missing from the constructor
+         * public void consumePurchase(PurchaseInfo purchaseInfo)
+         *
+         * To consume purchases
          * */
         for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.consumePurchase(purchaseInfo);
         }
 
         /*
-         * public void acknowledgePurchase(PurchaseInfo purchaseInfo) - to acknowledge purchases when .autoAcknowledge() is missing from the constructor
+         * public void acknowledgePurchase(PurchaseInfo purchaseInfo)
+         *
+         * To acknowledge purchases
          * */
         for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.acknowledgePurchase(purchaseInfo);
         }
 
         /*
-         * public final void purchase(Activity activity, String skuId) - to make a purchase
+         * public final void purchase(Activity activity, String skuId)
+         *
+         * To purchase an item
          * */
         billingConnector.purchase(SampleActivity.this, "sku_id");
+
+        /*
+         * public final void subscribe(Activity activity, String skuId)
+         *
+         * To purchase a subscription
+         * */
+        billingConnector.subscribe(SampleActivity.this, "sku_id");
+
+        /*
+         * public final void unsubscribe(Activity activity, String skuId)
+         *
+         * To cancel a subscription
+         * */
+        billingConnector.unsubscribe(SampleActivity.this, "sku_id");
     }
 }
