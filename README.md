@@ -10,9 +10,9 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 
 * You project should build against Android 5.0 (minSdkVersion 21).
 
-* Add the JitPack repository to your project's build.gradle file
+* Add the JitPack repository to your project's build.gradle file:
 
-```
+```java
 allprojects {
     repositories {
         ...
@@ -21,19 +21,37 @@ allprojects {
 }
 ```
 
-* Add the dependency in your app's build.gradle file
+* Add the dependency in your app's build.gradle file:
 
-```
+```java
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.0.0'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.0.1'
 }
 ```
 
 * Open the AndroidManifest.xml of your application and add this permission:
 
-```
+```java
   <uses-permission android:name="com.android.vending.BILLING" />
 ```
+
+# Important Notice
+
+* For builds that use `minSdkVersion` lower than `24`, it is very important to include the following in your app's build.gradle file:
+
+```java
+android {
+  compileOptions {
+    coreLibraryDesugaringEnabled true
+  }
+}
+
+dependencies {
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+}
+```
+
+This step is required to enable support for some APIs on lower SDK versions that aren't available natively only starting from `minSdkVersion 24`.
 
 # Usage
 
@@ -41,7 +59,7 @@ dependencies {
   - *Context*
   - *License key from `Play Console`*
   
-```
+```java
 billingConnector = new BillingConnector(this, "license_key")
                 .setConsumableIds(consumableIds)
                 .setNonConsumableIds(nonConsumableIds)
@@ -54,7 +72,7 @@ billingConnector = new BillingConnector(this, "license_key")
 
 * Implement the listener to handle event results and errors:
 
-```
+```java
 billingConnector.setBillingEventListener(new BillingEventListener() {
             @Override
             public void onProductsFetched(@NonNull List<SkuInfo> skuDetails) {
@@ -88,9 +106,9 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
         });
 ```
 
-* Make a purchase
+* Make a purchase:
 
-```
+```java
 billingConnector.purchase(this, "sku_id");
 ```
 
