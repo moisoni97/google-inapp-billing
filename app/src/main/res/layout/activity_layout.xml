@@ -408,8 +408,7 @@
 
                         </LinearLayout>
 
-                        <RelativeLayout
-                            android:id="@+id/purchase_subscription"
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="@dimen/_9sdp"
@@ -417,20 +416,49 @@
                             android:layout_marginEnd="@dimen/_18sdp"
                             android:layout_marginRight="@dimen/_18sdp"
                             android:layout_weight="1"
-                            android:background="@drawable/color_purple_rounded_all">
+                            android:orientation="vertical">
 
-                            <TextView
-                                android:layout_width="match_parent"
+                            <RelativeLayout
+                                android:id="@+id/purchase_subscription"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="@dimen/_3sdp"
+                                android:background="@drawable/color_purple_rounded_all">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/_3sdp"
+                                    android:layout_marginBottom="@dimen/_3sdp"
+                                    android:fontFamily="@font/leaguespartan"
+                                    android:gravity="center"
+                                    android:text="@string/subscribe"
+                                    android:textColor="@color/white"
+                                    android:textSize="@dimen/_11ssp" />
+
+                            </RelativeLayout>
+
+                            <RelativeLayout
+                                android:id="@+id/cancel_subscription"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/_3sdp"
-                                android:layout_marginBottom="@dimen/_3sdp"
-                                android:fontFamily="@font/leaguespartan"
-                                android:gravity="center"
-                                android:text="@string/purchase"
-                                android:textColor="@color/white"
-                                android:textSize="@dimen/_11ssp" />
+                                android:background="@drawable/color_purple_rounded_all">
 
-                        </RelativeLayout>
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="@dimen/_3sdp"
+                                    android:layout_marginBottom="@dimen/_3sdp"
+                                    android:fontFamily="@font/leaguespartan"
+                                    android:gravity="center"
+                                    android:text="@string/unsubscribe"
+                                    android:textColor="@color/white"
+                                    android:textSize="@dimen/_11ssp" />
+
+                            </RelativeLayout>
+
+                        </LinearLayout>
 
                     </LinearLayout>
 

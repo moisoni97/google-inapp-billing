@@ -33,7 +33,7 @@ import games.moisoni.google_iab.models.SkuInfo;
 public class SampleActivity extends AppCompatActivity {
 
     private ImageView exit_app;
-    private RelativeLayout purchase_consumable, purchase_non_consumable, purchase_subscription;
+    private RelativeLayout purchase_consumable, purchase_non_consumable, purchase_subscription, cancel_subscription;
 
     private BillingConnector billingConnector;
 
@@ -235,6 +235,7 @@ public class SampleActivity extends AppCompatActivity {
         purchase_consumable = findViewById(R.id.purchase_consumable);
         purchase_non_consumable = findViewById(R.id.purchase_non_consumable);
         purchase_subscription = findViewById(R.id.purchase_subscription);
+        cancel_subscription = findViewById(R.id.cancel_subscription);
 
         //init exit app button
         exit_app = findViewById(R.id.exit_app);
@@ -243,6 +244,7 @@ public class SampleActivity extends AppCompatActivity {
         BounceView.addAnimTo(purchase_consumable);
         BounceView.addAnimTo(purchase_non_consumable);
         BounceView.addAnimTo(purchase_subscription);
+        BounceView.addAnimTo(cancel_subscription);
         BounceView.addAnimTo(exit_app);
     }
 
@@ -250,7 +252,8 @@ public class SampleActivity extends AppCompatActivity {
         //make purchase on button click
         purchase_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "consumable_id1"));
         purchase_non_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "non_consumable_id2"));
-        purchase_subscription.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "subscription_id3")); //or billingConnector.subscribe(), billingConnector.unsubscribe()
+        purchase_subscription.setOnClickListener(v -> billingConnector.subscribe(SampleActivity.this, "subscription_id3"));
+        cancel_subscription.setOnClickListener(v -> billingConnector.unsubscribe(SampleActivity.this, "subscription_id3"));
 
         //exit app on button click
         exit_app.setOnClickListener(v -> finish());
