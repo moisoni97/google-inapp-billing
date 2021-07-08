@@ -3,7 +3,7 @@ A simple implementation of the Android In-App Billing API.
 
 It supports: in-app purchases (both consumable and non-consumable) and subscriptions.
 
-![image preview](https://i.postimg.cc/Bbf6Cgd2/Google-In-App-Billing-Sample-App.jpg)
+![image preview](https://i.postimg.cc/kMSPYb5H/Google-In-App-Billing-Image.jpg)
 ![video example](https://i.postimg.cc/DZX0sDY2/Google-In-App-Billing-Purchase.gif)
 
 # Getting Started
