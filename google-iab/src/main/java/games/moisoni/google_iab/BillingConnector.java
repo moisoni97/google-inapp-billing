@@ -2,6 +2,8 @@ package games.moisoni.google_iab;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -295,7 +297,7 @@ public class BillingConnector {
         billingClient.querySkuDetailsAsync(skuDetailsParams, (billingResult, skuDetailsList) -> {
             if (billingResult.getResponseCode() == OK) {
                 if (skuDetailsList != null && skuDetailsList.isEmpty()) {
-                    Log("Query SKU Details: data not found. Make sure SKU ids are configured on Google Play");
+                    Log("Query SKU Details: data not found. Make sure SKU ids are configured on Play Console");
 
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
                 } else {
@@ -466,6 +468,15 @@ public class BillingConnector {
             if (purchasedProductsFetched) {
                 fetchedPurchasedProducts = true;
                 findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(signatureValidPurchases));
+
+                for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
+                    if (shouldAutoAcknowledge) {
+                        boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
+                        if (!isSkuConsumable) {
+                            acknowledgePurchase(purchaseInfo);
+                        }
+                    }
+                }
             } else {
                 findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
             }
@@ -478,8 +489,8 @@ public class BillingConnector {
                 }
 
                 if (shouldAutoAcknowledge) {
-                    boolean wasConsumedBefore = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
-                    if (!wasConsumedBefore) {
+                    boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
+                    if (!isSkuConsumable) {
                         acknowledgePurchase(purchaseInfo);
                     }
                 }
@@ -490,7 +501,7 @@ public class BillingConnector {
     /**
      * Consume consumable products so that the user can buy the item again
      * <p>
-     * Consumable products might be brought/consumed by users multiple times (for eg. diamonds, coins)
+     * Consumable products might be bought/consumed by users multiple times (for eg. diamonds, coins etc)
      * They have to be consumed within 3 days otherwise Google will refund the products
      */
     public void consumePurchase(PurchaseInfo purchaseInfo) {
@@ -523,20 +534,29 @@ public class BillingConnector {
             switch (purchaseInfo.getSkuProductType()) {
                 case NON_CONSUMABLE:
                 case SUBSCRIPTION:
-                    if (!purchaseInfo.getPurchase().isAcknowledged()) {
-                        AcknowledgePurchaseParams acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                                .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
+                    if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                        if (!purchaseInfo.getPurchase().isAcknowledged()) {
+                            AcknowledgePurchaseParams acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
+                                    .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
 
-                        billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult -> {
-                            if (billingResult.getResponseCode() == OK) {
-                                findUiHandler().post(() -> billingEventListener.onPurchaseAcknowledged(purchaseInfo));
-                            } else {
-                                Log("Handling acknowledges: error during acknowledgment attempt: " + billingResult.getDebugMessage());
+                            billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult -> {
+                                if (billingResult.getResponseCode() == OK) {
+                                    findUiHandler().post(() -> billingEventListener.onPurchaseAcknowledged(purchaseInfo));
+                                } else {
+                                    Log("Handling acknowledges: error during acknowledgment attempt: " + billingResult.getDebugMessage());
 
-                                findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                                        new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR, billingResult)));
-                            }
-                        });
+                                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
+                                            new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR, billingResult)));
+                                }
+                            });
+                        }
+                    } else if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING) {
+                        Log("Handling acknowledges: purchase can not be acknowledged because the state is PENDING. " +
+                                "A purchase can be acknowledged only when the state is PURCHASED");
+
+                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
+                                new BillingResponse(ErrorType.ACKNOWLEDGE_WARNING, "Warning: purchase can not be acknowledged because the state is PENDING. " +
+                                        "Please acknowledge the purchase later", defaultResponseCode)));
                     }
                     break;
             }
@@ -556,6 +576,36 @@ public class BillingConnector {
                 Log("Billing client can not launch billing flow because SKU details are missing");
             }
         }
+    }
+
+    /**
+     * Called to purchase a subscription
+     * <p>
+     * To avoid confusion while trying to purchase a subscription
+     * Does the same thing as purchase() method
+     */
+    public final void subscribe(Activity activity, String skuId) {
+        purchase(activity, skuId);
+    }
+
+    /**
+     * Called to cancel a subscription
+     */
+    public final void unsubscribe(Activity activity, String skuId) {
+        try {
+            String subscriptionUrl = "http://play.google.com/store/account/subscriptions?package=" + activity.getPackageName() + "&sku=" + skuId;
+
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(subscriptionUrl));
+
+            activity.startActivity(intent);
+            activity.finish();
+        } catch (Exception e) {
+            Log("Handling subscription cancellation: error while trying to unsubscribe");
+            e.printStackTrace();
+        }
+
     }
 
     /**
