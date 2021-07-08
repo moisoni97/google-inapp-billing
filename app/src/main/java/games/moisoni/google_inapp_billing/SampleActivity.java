@@ -209,6 +209,7 @@ public class SampleActivity extends AppCompatActivity {
                          * and to come back later to receive their purchase
                          * */
                         //TODO - warning during acknowledgment
+                        break;
                     case CONSUME_ERROR:
                         //TODO - error during consumption
                         break;
@@ -256,9 +257,9 @@ public class SampleActivity extends AppCompatActivity {
     }
 
     /*
-    * Check this method to learn how to implement useful public methods
-    * provided by 'google-inapp-billing' library
-    * */
+     * Check this method to learn how to implement useful public methods
+     * provided by 'google-inapp-billing' library
+     * */
     @SuppressWarnings("unused")
     private void usefulPublicMethods() {
         /*
