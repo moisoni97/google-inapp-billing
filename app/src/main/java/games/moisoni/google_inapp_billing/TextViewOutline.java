@@ -44,7 +44,6 @@ public class TextViewOutline extends androidx.appcompat.widget.AppCompatTextView
                 mOutlineColor = a.getColor(R.styleable.TextViewOutline_outlineColor, DEFAULT_OUTLINE_COLOR);
             }
 
-            //the reason we take shadow from attributes is because we use API level 15 and only from 16 we have the get methods for the shadow attributes
             if (a.hasValue(R.styleable.TextViewOutline_android_shadowRadius)
                     || a.hasValue(R.styleable.TextViewOutline_android_shadowDx)
                     || a.hasValue(R.styleable.TextViewOutline_android_shadowDy)
