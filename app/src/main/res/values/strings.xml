@@ -10,6 +10,8 @@
     <string name="subscription_product">Subscription Product</string>
 
     <string name="purchase">Purchase</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="unsubscribe">Unsubscribe</string>
 
     <string name="info_restart_message">You may need to restart after purchase for changes to take effect.</string>
     <string name="info_example_message">This sample shows how to implement in-app purchases (both consumable and non-consumable) and subscriptions.</string>
