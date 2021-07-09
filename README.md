@@ -155,7 +155,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase completes
+                         * Here users can be informed that it may take a while until the purchase complete
                          * and to come back later to receive their purchase
                          * */
                          
@@ -165,10 +165,10 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
                         //TODO - error during consumption
                         break;
                     case FETCH_PURCHASED_PRODUCTS_ERROR:
-                        //TODO - error occurs while querying purchases
+                        //TODO - error occurred while querying purchases
                         break;
                     case BILLING_ERROR:
-                        //TODO - error occurs during initialization / querying sku details
+                        //TODO - error occurred during initialization / querying sku details
                         break;
                 }
             }
@@ -177,7 +177,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
 
 # Initiate a purchase
 
-* Purchase an item:
+* Purchase a non-consumable / consumable product:
 
 ```java
 billingConnector.purchase(this, "sku_id");
