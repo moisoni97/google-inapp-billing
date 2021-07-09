@@ -40,7 +40,7 @@ public class SampleActivity extends AppCompatActivity {
     //list for example purposes to demonstrate how to manually acknowledge or consume purchases
     private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
 
-    //list for example purposes to demonstrate how to check a purchase state
+    //list for example purposes to demonstrate how to synchronously check a purchase state
     private final List<SkuInfo> fetchedSkuInfoList = new ArrayList<>();
 
     @Override
@@ -98,7 +98,7 @@ public class SampleActivity extends AppCompatActivity {
 
                     //TODO - similarly check for other ids
 
-                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see how to check a purchase state synchronously
+                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see how to synchronously check a purchase state
                 }
             }
 
@@ -156,8 +156,8 @@ public class SampleActivity extends AppCompatActivity {
 
                 if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
                     //TODO - do something
-                    Log.d("BillingConnector", "Acknowledge: " + acknowledgedSku);
-                    Toast.makeText(SampleActivity.this, "Acknowledge: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
+                    Log.d("BillingConnector", "Acknowledged: " + acknowledgedSku);
+                    Toast.makeText(SampleActivity.this, "Acknowledged: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
                 }
 
                 //TODO - similarly check for other ids
@@ -205,7 +205,7 @@ public class SampleActivity extends AppCompatActivity {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase completes
+                         * Here users can be informed that it may take a while until the purchase complete
                          * and to come back later to receive their purchase
                          * */
                         //TODO - warning during acknowledgment
@@ -214,10 +214,10 @@ public class SampleActivity extends AppCompatActivity {
                         //TODO - error during consumption
                         break;
                     case FETCH_PURCHASED_PRODUCTS_ERROR:
-                        //TODO - error occurs while querying purchases
+                        //TODO - error occurred while querying purchases
                         break;
                     case BILLING_ERROR:
-                        //TODO - error occurs during initialization / querying sku details
+                        //TODO - error occurred during initialization / querying sku details
                         break;
                 }
 
@@ -249,10 +249,14 @@ public class SampleActivity extends AppCompatActivity {
     }
 
     private void clickListeners() {
-        //make purchase on button click
+        //purchase an item
         purchase_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "consumable_id1"));
         purchase_non_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "non_consumable_id2"));
+
+        //purchase a subscription
         purchase_subscription.setOnClickListener(v -> billingConnector.subscribe(SampleActivity.this, "subscription_id3"));
+
+        //cancel a subscription
         cancel_subscription.setOnClickListener(v -> billingConnector.unsubscribe(SampleActivity.this, "subscription_id3"));
 
         //exit app on button click
