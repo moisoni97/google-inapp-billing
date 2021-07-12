@@ -30,10 +30,10 @@ import games.moisoni.google_iab.models.SkuInfo;
  * To see real results, you need to implement the below code into a real project
  * released on Play Console and create your own in-app products ids
  */
-public class SampleActivity extends AppCompatActivity {
+public class JavaSampleActivity extends AppCompatActivity {
 
-    private ImageView exit_app;
-    private RelativeLayout purchase_consumable, purchase_non_consumable, purchase_subscription, cancel_subscription;
+    private ImageView exitApp;
+    private RelativeLayout purchaseConsumable, purchaseNonConsumable, purchaseSubscription, cancelSubscription;
 
     private BillingConnector billingConnector;
 
@@ -93,7 +93,7 @@ public class SampleActivity extends AppCompatActivity {
                     if (sku.equalsIgnoreCase("consumable_id1")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Product fetched:  " + sku);
-                        Toast.makeText(SampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(JavaSampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
@@ -112,7 +112,7 @@ public class SampleActivity extends AppCompatActivity {
                     if (purchase.equalsIgnoreCase("non_consumable_id2")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Purchased product fetched: " + purchase);
-                        Toast.makeText(SampleActivity.this, "Purchased product fetched: " + purchase, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + purchase, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
@@ -129,13 +129,13 @@ public class SampleActivity extends AppCompatActivity {
                     if (purchase.equalsIgnoreCase("subscription_id3")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Product purchased: " + purchase);
-                        Toast.makeText(SampleActivity.this, "Product purchased: " + purchase, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(JavaSampleActivity.this, "Product purchased: " + purchase, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
-                }
 
-                purchasedInfoList.addAll(purchases); //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
+                    purchasedInfoList.add(purchaseInfo); //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
+                }
             }
 
             @Override
@@ -157,7 +157,7 @@ public class SampleActivity extends AppCompatActivity {
                 if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
                     //TODO - do something
                     Log.d("BillingConnector", "Acknowledged: " + acknowledgedSku);
-                    Toast.makeText(SampleActivity.this, "Acknowledged: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
                 }
 
                 //TODO - similarly check for other ids
@@ -174,7 +174,7 @@ public class SampleActivity extends AppCompatActivity {
                 if (consumedSku.equalsIgnoreCase("consumable_id1")) {
                     //TODO - do something
                     Log.d("BillingConnector", "Consumed: " + consumedSku);
-                    Toast.makeText(SampleActivity.this, "Consumed: " + consumedSku, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(JavaSampleActivity.this, "Consumed: " + consumedSku, Toast.LENGTH_SHORT).show();
                 }
 
                 //TODO - similarly check for other ids
@@ -224,7 +224,7 @@ public class SampleActivity extends AppCompatActivity {
                 Log.d("BillingConnector", "Error type: " + response.getErrorType() +
                         " Response code: " + response.getResponseCode() + " Message: " + response.getMessage());
 
-                Toast.makeText(SampleActivity.this, "Error type: " + response.getErrorType() +
+                Toast.makeText(JavaSampleActivity.this, "Error type: " + response.getErrorType() +
                         " Response code: " + response.getResponseCode() + " Message: " + response.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -232,35 +232,35 @@ public class SampleActivity extends AppCompatActivity {
 
     private void initViews() {
         //init purchase buttons
-        purchase_consumable = findViewById(R.id.purchase_consumable);
-        purchase_non_consumable = findViewById(R.id.purchase_non_consumable);
-        purchase_subscription = findViewById(R.id.purchase_subscription);
-        cancel_subscription = findViewById(R.id.cancel_subscription);
+        purchaseConsumable = findViewById(R.id.purchase_consumable);
+        purchaseNonConsumable = findViewById(R.id.purchase_non_consumable);
+        purchaseSubscription = findViewById(R.id.purchase_subscription);
+        cancelSubscription = findViewById(R.id.cancel_subscription);
 
         //init exit app button
-        exit_app = findViewById(R.id.exit_app);
+        exitApp = findViewById(R.id.exit_app);
 
         //add bounce view animation to clickable views
-        BounceView.addAnimTo(purchase_consumable);
-        BounceView.addAnimTo(purchase_non_consumable);
-        BounceView.addAnimTo(purchase_subscription);
-        BounceView.addAnimTo(cancel_subscription);
-        BounceView.addAnimTo(exit_app);
+        BounceView.addAnimTo(purchaseConsumable);
+        BounceView.addAnimTo(purchaseNonConsumable);
+        BounceView.addAnimTo(purchaseSubscription);
+        BounceView.addAnimTo(cancelSubscription);
+        BounceView.addAnimTo(exitApp);
     }
 
     private void clickListeners() {
         //purchase an item
-        purchase_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "consumable_id1"));
-        purchase_non_consumable.setOnClickListener(v -> billingConnector.purchase(SampleActivity.this, "non_consumable_id2"));
+        purchaseConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "consumable_id1"));
+        purchaseNonConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "non_consumable_id2"));
 
         //purchase a subscription
-        purchase_subscription.setOnClickListener(v -> billingConnector.subscribe(SampleActivity.this, "subscription_id3"));
+        purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id3"));
 
         //cancel a subscription
-        cancel_subscription.setOnClickListener(v -> billingConnector.unsubscribe(SampleActivity.this, "subscription_id3"));
+        cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id3"));
 
         //exit app on button click
-        exit_app.setOnClickListener(v -> finish());
+        exitApp.setOnClickListener(v -> finish());
     }
 
     /*
@@ -339,20 +339,20 @@ public class SampleActivity extends AppCompatActivity {
          *
          * To purchase an item
          * */
-        billingConnector.purchase(SampleActivity.this, "sku_id");
+        billingConnector.purchase(JavaSampleActivity.this, "sku_id");
 
         /*
          * public final void subscribe(Activity activity, String skuId)
          *
          * To purchase a subscription
          * */
-        billingConnector.subscribe(SampleActivity.this, "sku_id");
+        billingConnector.subscribe(JavaSampleActivity.this, "sku_id");
 
         /*
          * public final void unsubscribe(Activity activity, String skuId)
          *
          * To cancel a subscription
          * */
-        billingConnector.unsubscribe(SampleActivity.this, "sku_id");
+        billingConnector.unsubscribe(JavaSampleActivity.this, "sku_id");
     }
 }
