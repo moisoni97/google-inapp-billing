@@ -222,10 +222,10 @@ public class JavaSampleActivity extends AppCompatActivity {
                 }
 
                 Log.d("BillingConnector", "Error type: " + response.getErrorType() +
-                        " Response code: " + response.getResponseCode() + " Message: " + response.getMessage());
+                        " Response code: " + response.getResponseCode() + " Message: " + response.getDebugMessage());
 
                 Toast.makeText(JavaSampleActivity.this, "Error type: " + response.getErrorType() +
-                        " Response code: " + response.getResponseCode() + " Message: " + response.getMessage(), Toast.LENGTH_SHORT).show();
+                        " Response code: " + response.getResponseCode() + " Message: " + response.getDebugMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
