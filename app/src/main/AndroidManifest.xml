@@ -23,7 +23,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".KotlinSampleActivity" />
+        <activity
+            android:name=".KotlinSampleActivity"
+            android:theme="@style/SplashTheme" />
     </application>
 
 </manifest>
