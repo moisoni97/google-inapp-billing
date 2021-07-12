@@ -7,12 +7,12 @@ import games.moisoni.google_iab.enums.ErrorType;
 public class BillingResponse {
 
     private final ErrorType errorType;
-    private final String message;
+    private final String debugMessage;
     private final int responseCode;
 
-    public BillingResponse(ErrorType errorType, String message, int responseCode) {
+    public BillingResponse(ErrorType errorType, String debugMessage, int responseCode) {
         this.errorType = errorType;
-        this.message = message;
+        this.debugMessage = debugMessage;
         this.responseCode = responseCode;
     }
 
@@ -24,8 +24,8 @@ public class BillingResponse {
         return errorType;
     }
 
-    public String getMessage() {
-        return message;
+    public String getDebugMessage() {
+        return debugMessage;
     }
 
     public int getResponseCode() {

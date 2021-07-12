@@ -39,6 +39,7 @@ class KotlinSampleActivity : AppCompatActivity() {
     private val fetchedSkuInfoList = mutableListOf<SkuInfo>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.AppTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_layout)
 
@@ -230,13 +231,13 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                 Log.d(
                     "BillingConnector", "Error type: ${response.errorType}" +
-                            " Response code: ${response.responseCode}" + " Message: ${response.message}"
+                            " Response code: ${response.responseCode}" + " Message: ${response.debugMessage}"
                 )
 
                 Toast.makeText(
                     this@KotlinSampleActivity,
-                    "Error type: ${response.errorType}" +
-                            " Response code: ${response.responseCode}" + " Message: ${response.message}",
+                    "Error type: ${response.errorType}" + " Response code: ${response.responseCode}"
+                            + " Message: ${response.debugMessage}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
