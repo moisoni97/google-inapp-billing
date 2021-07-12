@@ -79,7 +79,7 @@ class KotlinSampleActivity : AppCompatActivity() {
         billingConnector.setBillingEventListener(object : BillingEventListener {
             override fun onProductsFetched(skuDetails: MutableList<SkuInfo>) {
                 skuDetails.forEach {
-                    when (it.skuId) {
+                    when (it.sku) {
                         "consumable_id1" -> {
                             //TODO - do something
                             Log.d("BillingConnector", "Product fetched: $it")
@@ -99,7 +99,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
             override fun onPurchasedProductsFetched(purchases: MutableList<PurchaseInfo>) {
                 purchases.forEach {
-                    when (it.skuId) {
+                    when (it.sku) {
                         "non_consumable_id2" -> {
                             //TODO - do something
                             Log.d("BillingConnector", "Purchased product fetched: $it")
@@ -117,7 +117,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
             override fun onProductsPurchased(purchases: MutableList<PurchaseInfo>) {
                 purchases.forEach {
-                    when (it.skuId) {
+                    when (it.sku) {
                         "subscription_id3" -> {
                             //TODO - do something
                             Log.d("BillingConnector", "Product purchased: $it")
@@ -148,13 +148,13 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * check and acknowledge all unacknowledged products at the startup
                  * */
 
-                when (purchase.skuId) {
+                when (purchase.sku) {
                     "non_consumable_id2" -> {
                         //TODO - do something
-                        Log.d("BillingConnector", "Acknowledged: ${purchase.skuId}")
+                        Log.d("BillingConnector", "Acknowledged: ${purchase.sku}")
                         Toast.makeText(
                             this@KotlinSampleActivity,
-                            "Acknowledged: ${purchase.skuId}",
+                            "Acknowledged: ${purchase.sku}",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -168,13 +168,13 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * CONSUMABLE products entitlement can be granted either here or in onProductsPurchased
                  * */
 
-                when (purchase.skuId) {
+                when (purchase.sku) {
                     "consumable_id1" -> {
                         //TODO - do something
-                        Log.d("BillingConnector", "Consumed: ${purchase.skuId}")
+                        Log.d("BillingConnector", "Consumed: ${purchase.sku}")
                         Toast.makeText(
                             this@KotlinSampleActivity,
-                            "Consumed: ${purchase.skuId}",
+                            "Consumed: ${purchase.sku}",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -335,24 +335,24 @@ class KotlinSampleActivity : AppCompatActivity() {
             when (billingConnector.isPurchased(skuInfo)) {
                 PurchasedResult.YES -> {
                     //TODO - do something
-                    Log.d("BillingConnector", "The SKU: ${skuInfo.skuId} is purchased")
+                    Log.d("BillingConnector", "The SKU: ${skuInfo.sku} is purchased")
                 }
                 PurchasedResult.NO -> {
                     //TODO - do something
-                    Log.d("BillingConnector", "The SKU: ${skuInfo.skuId} is not purchased")
+                    Log.d("BillingConnector", "The SKU: ${skuInfo.sku} is not purchased")
                 }
                 PurchasedResult.CLIENT_NOT_READY -> {
                     //TODO - do something
                     Log.d(
                         "BillingConnector",
-                        "Cannot check: ${skuInfo.skuId} because client is not ready"
+                        "Cannot check: ${skuInfo.sku} because client is not ready"
                     )
                 }
                 PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET -> {
                     //TODO - do something
                     Log.d(
                         "BillingConnector",
-                        "Cannot check: ${skuInfo.skuId} because purchased products are not fetched yet"
+                        "Cannot check: ${skuInfo.sku} because purchased products are not fetched yet"
                     )
                 }
                 else -> {
