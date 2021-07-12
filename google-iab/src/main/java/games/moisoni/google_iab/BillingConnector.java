@@ -186,7 +186,7 @@ public class BillingConnector {
     private boolean checkSkuBeforeInteraction(String skuId) {
         if (!isReady()) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY, "Client is not ready yet", defaultResponseCode)));
-        } else if (skuId != null && fetchedSkuInfoList.stream().noneMatch(it -> it.getSkuId().equals(skuId))) {
+        } else if (skuId != null && fetchedSkuInfoList.stream().noneMatch(it -> it.getSku().equals(skuId))) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_NOT_EXIST,
                     "The SKU id: " + skuId + " doesn't seem to exist on Play Console", defaultResponseCode)));
         } else return isReady();
@@ -316,7 +316,7 @@ public class BillingConnector {
                                 throw new IllegalStateException("SKU type is not implemented");
                         }
 
-                        List<String> fetchedSkuIds = fetchedSkuInfo.stream().map(SkuInfo::getSkuId).collect(Collectors.toList());
+                        List<String> fetchedSkuIds = fetchedSkuInfo.stream().map(SkuInfo::getSku).collect(Collectors.toList());
                         boolean isFetched = fetchedSkuIds.stream().anyMatch(element -> allIds.contains(element));
 
                         if (isFetched) {
@@ -454,7 +454,7 @@ public class BillingConnector {
                 for (int i = 0; i < purchasesSkus.size(); i++) {
                     String purchaseSku = purchasesSkus.get(i);
 
-                    Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSkuId().equals(purchaseSku)).findFirst();
+                    Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(purchaseSku)).findFirst();
                     if (skuInfo.isPresent()) {
                         SkuDetails skuDetails = skuInfo.get().getSkuDetails();
 
@@ -496,7 +496,7 @@ public class BillingConnector {
      * They have to be consumed within 3 days otherwise Google will refund the products
      */
     public void consumePurchase(PurchaseInfo purchaseInfo) {
-        if (checkSkuBeforeInteraction(purchaseInfo.getSkuId())) {
+        if (checkSkuBeforeInteraction(purchaseInfo.getSku())) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 ConsumeParams consumeParams = ConsumeParams.newBuilder().setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
 
@@ -521,7 +521,7 @@ public class BillingConnector {
      * This will avoid refunding for these products to users by Google
      */
     public void acknowledgePurchase(PurchaseInfo purchaseInfo) {
-        if (checkSkuBeforeInteraction(purchaseInfo.getSkuId())) {
+        if (checkSkuBeforeInteraction(purchaseInfo.getSku())) {
             switch (purchaseInfo.getSkuProductType()) {
                 case NON_CONSUMABLE:
                 case SUBSCRIPTION:
@@ -559,7 +559,7 @@ public class BillingConnector {
      */
     public final void purchase(Activity activity, String skuId) {
         if (checkSkuBeforeInteraction(skuId)) {
-            Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSkuId().equals(skuId)).findFirst();
+            Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(skuId)).findFirst();
             if (skuInfo.isPresent()) {
                 SkuDetails skuDetails = skuInfo.get().getSkuDetails();
                 billingClient.launchBillingFlow(activity, BillingFlowParams.newBuilder().setSkuDetails(skuDetails).build());
@@ -603,7 +603,7 @@ public class BillingConnector {
      * Checks purchase state synchronously
      */
     public final PurchasedResult isPurchased(SkuInfo skuInfo) {
-        return checkPurchased(skuInfo.getSkuId());
+        return checkPurchased(skuInfo.getSku());
     }
 
     private PurchasedResult checkPurchased(String skuId) {
@@ -613,7 +613,7 @@ public class BillingConnector {
             return PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET;
         } else {
             for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                if (purchaseInfo.getSkuId().equals(skuId)) {
+                if (purchaseInfo.getSku().equals(skuId)) {
                     return PurchasedResult.YES;
                 }
             }
