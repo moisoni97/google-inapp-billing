@@ -88,7 +88,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                 String sku;
 
                 for (SkuInfo skuInfo : skuDetails) {
-                    sku = skuInfo.getSkuId();
+                    sku = skuInfo.getSku();
 
                     if (sku.equalsIgnoreCase("consumable_id1")) {
                         //TODO - do something
@@ -107,7 +107,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                 String purchase;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    purchase = purchaseInfo.getSkuId();
+                    purchase = purchaseInfo.getSku();
 
                     if (purchase.equalsIgnoreCase("non_consumable_id2")) {
                         //TODO - do something
@@ -124,7 +124,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                 String purchase;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    purchase = purchaseInfo.getSkuId();
+                    purchase = purchaseInfo.getSku();
 
                     if (purchase.equalsIgnoreCase("subscription_id3")) {
                         //TODO - do something
@@ -152,7 +152,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * check and acknowledge all unacknowledged products at the startup
                  * */
 
-                String acknowledgedSku = purchase.getSkuId();
+                String acknowledgedSku = purchase.getSku();
 
                 if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
                     //TODO - do something
@@ -169,7 +169,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * CONSUMABLE products entitlement can be granted either here or in onProductsPurchased
                  * */
 
-                String consumedSku = purchase.getSkuId();
+                String consumedSku = purchase.getSku();
 
                 if (consumedSku.equalsIgnoreCase("consumable_id1")) {
                     //TODO - do something
@@ -303,16 +303,16 @@ public class JavaSampleActivity extends AppCompatActivity {
         for (SkuInfo skuInfo : fetchedSkuInfoList) {
             if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
                 //TODO - do something
-                Log.d("BillingConnector", "The SKU: " + skuInfo.getSkuId() + " is purchased");
+                Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is purchased");
             } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.NO) {
                 //TODO - do something
-                Log.d("BillingConnector", "The SKU: " + skuInfo.getSkuId() + " is not purchased");
+                Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is not purchased");
             } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.CLIENT_NOT_READY) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSkuId() + " because client is not ready");
+                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSku() + " because client is not ready");
             } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSkuId() + " because purchased products are not fetched yet");
+                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSku() + " because purchased products are not fetched yet");
             }
         }
 

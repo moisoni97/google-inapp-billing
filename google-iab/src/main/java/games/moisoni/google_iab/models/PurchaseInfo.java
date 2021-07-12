@@ -6,7 +6,8 @@ import games.moisoni.google_iab.enums.SkuProductType;
 
 public class PurchaseInfo {
 
-    private final String skuId;
+    private final String sku;
+
     private final SkuProductType skuProductType;
     private final SkuInfo skuInfo;
     private final Purchase purchase;
@@ -14,12 +15,12 @@ public class PurchaseInfo {
     public PurchaseInfo(SkuInfo skuInfo, Purchase purchase) {
         this.skuInfo = skuInfo;
         this.purchase = purchase;
-        this.skuId = skuInfo.getSkuId();
+        this.sku = skuInfo.getSku();
         this.skuProductType = skuInfo.getSkuProductType();
     }
 
-    public String getSkuId() {
-        return skuId;
+    public String getSku() {
+        return sku;
     }
 
     public SkuProductType getSkuProductType() {
