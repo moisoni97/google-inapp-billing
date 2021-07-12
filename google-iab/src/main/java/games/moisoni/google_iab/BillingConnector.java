@@ -640,9 +640,9 @@ public class BillingConnector {
     /**
      * To print a log while debugging BillingConnector
      */
-    private void Log(String message) {
+    private void Log(String debugMessage) {
         if (shouldEnableLogging) {
-            Log.d(TAG, message);
+            Log.d(TAG, debugMessage);
         }
     }
 }
