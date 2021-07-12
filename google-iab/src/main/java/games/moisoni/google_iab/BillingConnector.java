@@ -468,15 +468,6 @@ public class BillingConnector {
             if (purchasedProductsFetched) {
                 fetchedPurchasedProducts = true;
                 findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(signatureValidPurchases));
-
-                for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
-                    if (shouldAutoAcknowledge) {
-                        boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
-                        if (!isSkuConsumable) {
-                            acknowledgePurchase(purchaseInfo);
-                        }
-                    }
-                }
             } else {
                 findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
             }
