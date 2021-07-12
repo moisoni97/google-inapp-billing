@@ -7,6 +7,7 @@ import games.moisoni.google_iab.enums.ErrorType;
 public class BillingResponse {
 
     private final ErrorType errorType;
+
     private final String debugMessage;
     private final int responseCode;
 
