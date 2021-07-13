@@ -222,7 +222,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                         //TODO - error occurred during initialization / querying sku details
                     }
                     ErrorType.USER_CANCELED -> {
-                        //TODO - user pressed back or canceled the purchase dialog
+                        //TODO - user pressed back or canceled a dialog
                     }
                     ErrorType.SERVICE_UNAVAILABLE -> {
                         //TODO - network connection is down
