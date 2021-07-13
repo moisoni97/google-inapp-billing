@@ -34,10 +34,16 @@ import games.moisoni.google_iab.models.PurchaseInfo;
 import games.moisoni.google_iab.models.SkuInfo;
 
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_TIMEOUT;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
 import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
 import static com.android.billingclient.api.BillingClient.SkuType.INAPP;
 import static com.android.billingclient.api.BillingClient.SkuType.SUBS;
@@ -86,19 +92,47 @@ public class BillingConnector {
         billingClient = BillingClient.newBuilder(context)
                 .enablePendingPurchases()
                 .setListener((billingResult, purchases) -> {
-
                     switch (billingResult.getResponseCode()) {
                         case OK:
                             if (purchases != null) {
                                 processPurchases(purchases, false);
                             }
                             break;
+                        case USER_CANCELED:
+                            Log("User pressed back or canceled a dialog." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.USER_CANCELED, billingResult)));
+                            break;
+                        case SERVICE_UNAVAILABLE:
+                            Log("Network connection is down." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.SERVICE_UNAVAILABLE, billingResult)));
+                            break;
+                        case BILLING_UNAVAILABLE:
+                            Log("Billing API version is not supported for the type requested." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_UNAVAILABLE, billingResult)));
+                            break;
+                        case ITEM_UNAVAILABLE:
+                            Log("Requested product is not available for purchase." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_UNAVAILABLE, billingResult)));
+                            break;
+                        case DEVELOPER_ERROR:
+                            Log("Invalid arguments provided to the API." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR, billingResult)));
+                            break;
+                        case ERROR:
+                            Log("Fatal error during the API action." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ERROR, billingResult)));
+                            break;
                         case ITEM_ALREADY_OWNED:
-                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_ALREADY_OWNED,
-                                    "Purchases list: " + purchases + " " + billingResult.getDebugMessage(), billingResult.getResponseCode())));
+                            Log("Failure to purchase since item is already owned." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_ALREADY_OWNED, billingResult)));
+                            break;
+                        case ITEM_NOT_OWNED:
+                            Log("Failure to consume since item is not owned." + " Response code: " + billingResult.getResponseCode());
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_NOT_OWNED, billingResult)));
                             break;
                         case SERVICE_DISCONNECTED:
                         case SERVICE_TIMEOUT:
+                            Log("Initialization error: service disconnected/timeout. Trying to reconnect...");
                             connect();
                             break;
                         default:
@@ -185,9 +219,10 @@ public class BillingConnector {
      */
     private boolean checkSkuBeforeInteraction(String skuId) {
         if (!isReady()) {
-            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY, "Client is not ready yet", defaultResponseCode)));
+            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
+                    "Client is not ready yet", defaultResponseCode)));
         } else if (skuId != null && fetchedSkuInfoList.stream().noneMatch(it -> it.getSku().equals(skuId))) {
-            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_NOT_EXIST,
+            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.SKU_NOT_EXIST,
                     "The SKU id: " + skuId + " doesn't seem to exist on Play Console", defaultResponseCode)));
         } else return isReady();
 
@@ -244,7 +279,7 @@ public class BillingConnector {
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_DISCONNECTED,
                             "Billing service: disconnected", defaultResponseCode)));
 
-                    Log("Billing service: Trying to establish to reconnect...");
+                    Log("Billing service: Trying to reconnect...");
                     billingClient.startConnection(this);
                 }
 
@@ -299,7 +334,8 @@ public class BillingConnector {
                 if (skuDetailsList != null && skuDetailsList.isEmpty()) {
                     Log("Query SKU Details: data not found. Make sure SKU ids are configured on Play Console");
 
-                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
+                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
+                            "No SKU found", defaultResponseCode)));
                 } else {
                     Log("Query SKU Details: data found");
 
@@ -507,8 +543,7 @@ public class BillingConnector {
                     } else {
                         Log("Handling consumables: error during consumption attempt: " + billingResult.getDebugMessage());
 
-                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                                new BillingResponse(ErrorType.CONSUME_ERROR, billingResult)));
+                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CONSUME_ERROR, billingResult)));
                     }
                 });
             }
@@ -536,8 +571,7 @@ public class BillingConnector {
                                 } else {
                                     Log("Handling acknowledges: error during acknowledgment attempt: " + billingResult.getDebugMessage());
 
-                                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                                            new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR, billingResult)));
+                                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR, billingResult)));
                                 }
                             });
                         }
@@ -545,9 +579,8 @@ public class BillingConnector {
                         Log("Handling acknowledges: purchase can not be acknowledged because the state is PENDING. " +
                                 "A purchase can be acknowledged only when the state is PURCHASED");
 
-                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                                new BillingResponse(ErrorType.ACKNOWLEDGE_WARNING, "Warning: purchase can not be acknowledged because the state is PENDING. " +
-                                        "Please acknowledge the purchase later", defaultResponseCode)));
+                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ACKNOWLEDGE_WARNING,
+                                "Warning: purchase can not be acknowledged because the state is PENDING. Please acknowledge the purchase later", defaultResponseCode)));
                     }
                     break;
             }
