@@ -25,7 +25,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.0.2'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.0.3'
 }
 ```
 
@@ -199,4 +199,4 @@ billingConnector.unsubscribe(this, "sku_id");
 
 Go through the sample app to see a more advanced integration of the library. 
 
-It also shows how to implement some `useful public methods`.
+It also shows a `Kotlin` example and how to implement some `useful public methods`.
