@@ -184,16 +184,16 @@ public class JavaSampleActivity extends AppCompatActivity {
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
                 switch (response.getErrorType()) {
                     case CLIENT_NOT_READY:
-                        //TODO - client is not ready
+                        //TODO - client is not ready yet
                         break;
                     case CLIENT_DISCONNECTED:
                         //TODO - client has disconnected
                         break;
-                    case ITEM_NOT_EXIST:
-                        //TODO - item doesn't exist
+                    case SKU_NOT_EXIST:
+                        //TODO - sku does not exist
                         break;
-                    case ITEM_ALREADY_OWNED:
-                        //TODO - item is already owned
+                    case CONSUME_ERROR:
+                        //TODO - error during consumption
                         break;
                     case ACKNOWLEDGE_ERROR:
                         //TODO - error during acknowledgment
@@ -210,14 +210,35 @@ public class JavaSampleActivity extends AppCompatActivity {
                          * */
                         //TODO - warning during acknowledgment
                         break;
-                    case CONSUME_ERROR:
-                        //TODO - error during consumption
-                        break;
                     case FETCH_PURCHASED_PRODUCTS_ERROR:
-                        //TODO - error occurred while querying purchases
+                        //TODO - error occurred while querying purchased products
                         break;
                     case BILLING_ERROR:
                         //TODO - error occurred during initialization / querying sku details
+                        break;
+                    case USER_CANCELED:
+                        //TODO - user pressed back or canceled the purchase dialog
+                        break;
+                    case SERVICE_UNAVAILABLE:
+                        //TODO - network connection is down
+                        break;
+                    case BILLING_UNAVAILABLE:
+                        //TODO - billing API version is not supported for the type requested
+                        break;
+                    case ITEM_UNAVAILABLE:
+                        //TODO - requested product is not available for purchase
+                        break;
+                    case DEVELOPER_ERROR:
+                        //TODO - invalid arguments provided to the API
+                        break;
+                    case ERROR:
+                        //TODO - fatal error during the API action
+                        break;
+                    case ITEM_ALREADY_OWNED:
+                        //TODO - failure to purchase since item is already owned
+                        break;
+                    case ITEM_NOT_OWNED:
+                        //TODO - failure to consume since item is not owned
                         break;
                 }
 
