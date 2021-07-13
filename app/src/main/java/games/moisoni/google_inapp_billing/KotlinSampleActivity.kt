@@ -189,16 +189,16 @@ class KotlinSampleActivity : AppCompatActivity() {
             ) {
                 when (response.errorType) {
                     ErrorType.CLIENT_NOT_READY -> {
-                        //TODO - client is not ready
+                        //TODO - client is not ready yet
                     }
                     ErrorType.CLIENT_DISCONNECTED -> {
                         //TODO - client has disconnected
                     }
-                    ErrorType.ITEM_NOT_EXIST -> {
-                        //TODO - item doesn't exist
+                    ErrorType.SKU_NOT_EXIST -> {
+                        //TODO - sku does not exist
                     }
-                    ErrorType.ITEM_ALREADY_OWNED -> {
-                        //TODO - item is already owned
+                    ErrorType.CONSUME_ERROR -> {
+                        //TODO - error during consumption
                     }
                     ErrorType.ACKNOWLEDGE_ERROR -> {
                         //TODO - error during acknowledgment
@@ -215,14 +215,35 @@ class KotlinSampleActivity : AppCompatActivity() {
                           * */
                         //TODO - warning during acknowledgment
                     }
-                    ErrorType.CONSUME_ERROR -> {
-                        //TODO - error during consumption
-                    }
                     ErrorType.FETCH_PURCHASED_PRODUCTS_ERROR -> {
-                        //TODO - error occurred while querying purchases
+                        //TODO - error occurred while querying purchased products
                     }
                     ErrorType.BILLING_ERROR -> {
                         //TODO - error occurred during initialization / querying sku details
+                    }
+                    ErrorType.USER_CANCELED -> {
+                        //TODO - user pressed back or canceled the purchase dialog
+                    }
+                    ErrorType.SERVICE_UNAVAILABLE -> {
+                        //TODO - network connection is down
+                    }
+                    ErrorType.BILLING_UNAVAILABLE -> {
+                        //TODO - billing API version is not supported for the type requested
+                    }
+                    ErrorType.ITEM_UNAVAILABLE -> {
+                        //TODO - requested product is not available for purchase
+                    }
+                    ErrorType.DEVELOPER_ERROR -> {
+                        //TODO - invalid arguments provided to the API
+                    }
+                    ErrorType.ERROR -> {
+                        //TODO - fatal error during the API action
+                    }
+                    ErrorType.ITEM_ALREADY_OWNED -> {
+                        //TODO - item is already owned
+                    }
+                    ErrorType.ITEM_NOT_OWNED -> {
+                        //TODO - failure to consume since item is not owned
                     }
                     else -> {
                         Log.d("BillingConnector", "None of the above ErrorType match")
