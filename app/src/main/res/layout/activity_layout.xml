@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:background="@color/purple">
 
-            <games.moisoni.google_inapp_billing.TextViewOutline
+            <games.moisoni.google_inapp_billing.TextOutline
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/leaguespartan"
@@ -95,7 +95,7 @@
                     android:gravity="center"
                     android:orientation="horizontal">
 
-                    <games.moisoni.google_inapp_billing.TextViewOutline
+                    <games.moisoni.google_inapp_billing.TextOutline
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/leaguespartan"
@@ -218,7 +218,7 @@
                     android:gravity="center"
                     android:orientation="horizontal">
 
-                    <games.moisoni.google_inapp_billing.TextViewOutline
+                    <games.moisoni.google_inapp_billing.TextOutline
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/leaguespartan"
@@ -341,7 +341,7 @@
                     android:gravity="center"
                     android:orientation="horizontal">
 
-                    <games.moisoni.google_inapp_billing.TextViewOutline
+                    <games.moisoni.google_inapp_billing.TextOutline
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/leaguespartan"
