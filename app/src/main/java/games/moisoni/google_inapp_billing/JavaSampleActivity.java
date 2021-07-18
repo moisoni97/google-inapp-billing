@@ -86,14 +86,20 @@ public class JavaSampleActivity extends AppCompatActivity {
             @Override
             public void onProductsFetched(@NonNull List<SkuInfo> skuDetails) {
                 String sku;
+                String price;
 
                 for (SkuInfo skuInfo : skuDetails) {
                     sku = skuInfo.getSku();
+                    price = skuInfo.getPrice();
 
                     if (sku.equalsIgnoreCase("consumable_id1")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product fetched:  " + sku);
+                        Log.d("BillingConnector", "Product fetched: " + sku);
                         Toast.makeText(JavaSampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
+
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product price: " + price);
+                        Toast.makeText(JavaSampleActivity.this, "Product price: " + price, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
@@ -121,15 +127,21 @@ public class JavaSampleActivity extends AppCompatActivity {
 
             @Override
             public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
-                String purchase;
+                String sku;
+                String purchaseToken;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    purchase = purchaseInfo.getSku();
+                    sku = purchaseInfo.getSku();
+                    purchaseToken = purchaseInfo.getPurchaseToken();
 
-                    if (purchase.equalsIgnoreCase("subscription_id3")) {
+                    if (sku.equalsIgnoreCase("subscription_id3")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product purchased: " + purchase);
-                        Toast.makeText(JavaSampleActivity.this, "Product purchased: " + purchase, Toast.LENGTH_SHORT).show();
+                        Log.d("BillingConnector", "Product purchased: " + sku);
+                        Toast.makeText(JavaSampleActivity.this, "Product purchased: " + sku, Toast.LENGTH_SHORT).show();
+
+                        //TODO - do something
+                        Log.d("BillingConnector", "Purchase token: " + purchaseToken);
+                        Toast.makeText(JavaSampleActivity.this, "Purchase token: " + purchaseToken, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids

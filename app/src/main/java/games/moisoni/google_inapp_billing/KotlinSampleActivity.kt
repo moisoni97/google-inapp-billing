@@ -78,22 +78,34 @@ class KotlinSampleActivity : AppCompatActivity() {
 
         billingConnector.setBillingEventListener(object : BillingEventListener {
             override fun onProductsFetched(skuDetails: MutableList<SkuInfo>) {
-                skuDetails.forEach {
-                    when (it.sku) {
-                        "consumable_id1" -> {
-                            //TODO - do something
-                            Log.d("BillingConnector", "Product fetched: $it")
-                            Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Product fetched: $it",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                var sku: String
+                var price: String
 
-                        //TODO - similarly check for other ids
+                for (skuInfo in skuDetails) {
+                    sku = skuInfo.sku
+                    price = skuInfo.price
+
+                    if (sku.equals("consumable_id1", ignoreCase = true)) {
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product fetched: $sku")
+                        Toast.makeText(
+                            this@KotlinSampleActivity,
+                            "Product fetched: $sku",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product price: $price")
+                        Toast.makeText(
+                            this@KotlinSampleActivity,
+                            "Product price: $price",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
 
-                    fetchedSkuInfoList.add(it) //check "usefulPublicMethods" to see how to synchronously check a purchase state
+                    //TODO - similarly check for other ids
+
+                    fetchedSkuInfoList.add(skuInfo) //check "usefulPublicMethods" to see how to synchronously check a purchase state
                 }
             }
 
@@ -116,22 +128,34 @@ class KotlinSampleActivity : AppCompatActivity() {
             }
 
             override fun onProductsPurchased(purchases: MutableList<PurchaseInfo>) {
-                purchases.forEach {
-                    when (it.sku) {
-                        "subscription_id3" -> {
-                            //TODO - do something
-                            Log.d("BillingConnector", "Product purchased: $it")
-                            Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Product purchased: $it",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                var sku: String
+                var purchaseToken: String
 
-                        //TODO - similarly check for other ids
+                for (purchaseInfo in purchases) {
+                    sku = purchaseInfo.sku
+                    purchaseToken = purchaseInfo.purchaseToken
+
+                    if (sku.equals("subscription_id3", ignoreCase = true)) {
+                        //TODO - do something
+                        Log.d("BillingConnector", "Product purchased: $sku")
+                        Toast.makeText(
+                            this@KotlinSampleActivity,
+                            "Product purchased: $sku",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        //TODO - do something
+                        Log.d("BillingConnector", "Purchase token: $purchaseToken")
+                        Toast.makeText(
+                            this@KotlinSampleActivity,
+                            "Purchase token: $purchaseToken",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
 
-                    purchasedInfoList.add(it) //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
+                    //TODO - similarly check for other ids
+
+                    purchasedInfoList.add(purchaseInfo) //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
                 }
             }
 
