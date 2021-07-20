@@ -324,7 +324,7 @@ public class BillingConnector {
     }
 
     /**
-     * Fires a query in Play Console to show products available to buy
+     * Fires a query in Play Console to show products available to purchase
      */
     private void querySkuDetails(String skuType, List<String> ids) {
         SkuDetailsParams skuDetailsParams = SkuDetailsParams.newBuilder().setSkusList(ids).setType(skuType).build();
@@ -588,7 +588,7 @@ public class BillingConnector {
     }
 
     /**
-     * Called to purchase an item
+     * Called to purchase a non-consumable/consumable product
      */
     public final void purchase(Activity activity, String skuId) {
         if (checkSkuBeforeInteraction(skuId)) {
