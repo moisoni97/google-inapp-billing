@@ -197,7 +197,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
 
 # Initiate a purchase
 
-* Purchase a non-consumable / consumable product:
+* Purchase a non-consumable/consumable product:
 
 ```java
 billingConnector.purchase(this, "sku_id");
@@ -215,8 +215,14 @@ billingConnector.subscribe(this, "sku_id");
 billingConnector.unsubscribe(this, "sku_id");
 ```
 
+# Kotlin
+
+`Kotlin` is interoperable with `Java` and vice versa. This library works without any issues in `Kotlin` projects.
+
+The `sample app` provides an example for `Kotlin` users.
+
 # Sample App
 
-Go through the sample app to see a more advanced integration of the library. 
+Go through the `sample app` to see a more advanced integration of the library. 
 
-It also shows a `Kotlin` example and how to implement some `useful public methods`.
+It also shows how to implement some `useful public methods`.
