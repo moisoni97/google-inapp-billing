@@ -110,15 +110,15 @@ public class JavaSampleActivity extends AppCompatActivity {
 
             @Override
             public void onPurchasedProductsFetched(@NonNull List<PurchaseInfo> purchases) {
-                String purchase;
+                String sku;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    purchase = purchaseInfo.getSku();
+                    sku = purchaseInfo.getSku();
 
-                    if (purchase.equalsIgnoreCase("non_consumable_id2")) {
+                    if (sku.equalsIgnoreCase("non_consumable_id2")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Purchased product fetched: " + purchase);
-                        Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + purchase, Toast.LENGTH_SHORT).show();
+                        Log.d("BillingConnector", "Purchased product fetched: " + sku);
+                        Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + sku, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
@@ -342,17 +342,17 @@ public class JavaSampleActivity extends AppCompatActivity {
                 Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is not purchased");
             } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.CLIENT_NOT_READY) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSku() + " because client is not ready");
+                Log.d("BillingConnector", "Cannot check: " + skuInfo.getSku() + " because client is not ready");
             } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check:  " + skuInfo.getSku() + " because purchased products are not fetched yet");
+                Log.d("BillingConnector", "Cannot check: " + skuInfo.getSku() + " because purchased products are not fetched yet");
             }
         }
 
         /*
          * public void consumePurchase(PurchaseInfo purchaseInfo)
          *
-         * To consume purchases
+         * To consume consumable products
          * */
         for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.consumePurchase(purchaseInfo);
@@ -361,7 +361,7 @@ public class JavaSampleActivity extends AppCompatActivity {
         /*
          * public void acknowledgePurchase(PurchaseInfo purchaseInfo)
          *
-         * To acknowledge purchases
+         * To acknowledge non-consumable products & subscriptions
          * */
         for (PurchaseInfo purchaseInfo : purchasedInfoList) {
             billingConnector.acknowledgePurchase(purchaseInfo);
@@ -370,7 +370,7 @@ public class JavaSampleActivity extends AppCompatActivity {
         /*
          * public final void purchase(Activity activity, String skuId)
          *
-         * To purchase an item
+         * To purchase a non-consumable/consumable product
          * */
         billingConnector.purchase(JavaSampleActivity.this, "sku_id");
 
