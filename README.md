@@ -1,4 +1,4 @@
-# Google In-App Billing Library v4+
+# Google In-App Billing Library v4+ [![API](https://img.shields.io/badge/API-16%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=16) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
 A simple implementation of the Android In-App Billing API.
 
 It supports: in-app purchases (both consumable and non-consumable) and subscriptions.
@@ -219,10 +219,10 @@ billingConnector.unsubscribe(this, "sku_id");
 
 `Kotlin` is interoperable with `Java` and vice versa. This library works without any issues in `Kotlin` projects.
 
-The `sample app` provides an example for `Kotlin` users.
+The sample app provides an example for `Kotlin` users.
 
 # Sample App
 
-Go through the `sample app` to see a more advanced integration of the library. 
+Go through the sample app to see a more advanced integration of the library. 
 
 It also shows how to implement some `useful public methods`.
