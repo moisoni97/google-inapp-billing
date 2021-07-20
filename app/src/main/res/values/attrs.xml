@@ -1,5 +1,5 @@
 <resources>
-    <declare-styleable name="TextViewOutline">
+    <declare-styleable name="TextOutline">
         <attr name="outlineSize" format="dimension" />
         <attr name="outlineColor" format="color|reference" />
         <attr name="android:shadowRadius" />
