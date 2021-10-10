@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import games.moisoni.google_iab.enums.ErrorType;
 import games.moisoni.google_iab.enums.PurchasedResult;
 import games.moisoni.google_iab.enums.SkuProductType;
+import games.moisoni.google_iab.enums.SkuType;
 import games.moisoni.google_iab.enums.SupportState;
 import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.PurchaseInfo;
@@ -99,7 +100,7 @@ public class BillingConnector {
                     switch (billingResult.getResponseCode()) {
                         case OK:
                             if (purchases != null) {
-                                processPurchases(purchases, false);
+                                processPurchases(SkuType.NONE, purchases, false);
                             }
                             break;
                         case USER_CANCELED:
@@ -445,7 +446,7 @@ public class BillingConnector {
                     } else {
                         Log("Query IN-APP Purchases: data found and progress");
 
-                        processPurchases(inAppPurchases, true);
+                        processPurchases(SkuType.INAPP, inAppPurchases, true);
                     }
                 } else {
                     Log("Query IN-APP Purchases: failed");
@@ -461,7 +462,7 @@ public class BillingConnector {
                         } else {
                             Log("Query SUBS Purchases: data found and progress");
 
-                            processPurchases(subscriptionPurchases, true);
+                            processPurchases(SkuType.SUBS, subscriptionPurchases, true);
                         }
                     } else {
                         Log("Query SUBS Purchases: failed");
@@ -498,7 +499,7 @@ public class BillingConnector {
     /**
      * Checks purchases signature for more security
      */
-    private void processPurchases(List<Purchase> allPurchases, boolean purchasedProductsFetched) {
+    private void processPurchases(SkuType skuType, List<Purchase> allPurchases, boolean purchasedProductsFetched) {
         if (!allPurchases.isEmpty()) {
 
             List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
@@ -527,7 +528,7 @@ public class BillingConnector {
 
             if (purchasedProductsFetched) {
                 fetchedPurchasedProducts = true;
-                findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(signatureValidPurchases));
+                findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases));
             } else {
                 findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
             }
