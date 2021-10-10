@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
+import games.moisoni.google_iab.enums.SkuType;
 import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.PurchaseInfo;
 import games.moisoni.google_iab.models.SkuInfo;
@@ -20,8 +21,9 @@ public interface BillingEventListener {
      * Callback will be triggered when purchased products are queried from Play Console
      *
      * @param purchases - a list with owned products
+     * @param skuType   - the type of SKU, either INAPP or SUBS
      */
-    void onPurchasedProductsFetched(@NonNull List<PurchaseInfo> purchases);
+    void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases);
 
     /**
      * Callback will be triggered when a product is purchased successfully
