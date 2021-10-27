@@ -528,7 +528,7 @@ public class BillingConnector {
 
             if (purchasedProductsFetched) {
                 fetchedPurchasedProducts = true;
-                findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases));
+                findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases, false));
             } else {
                 findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
             }
