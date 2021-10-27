@@ -23,7 +23,7 @@ public interface BillingEventListener {
      * @param purchases - a list with owned products
      * @param skuType   - the type of SKU, either INAPP or SUBS
      */
-    void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases);
+    void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases, boolean isEmpty);
 
     /**
      * Callback will be triggered when a product is purchased successfully
