@@ -17,6 +17,7 @@ import java.util.List;
 import games.moisoni.google_iab.BillingConnector;
 import games.moisoni.google_iab.BillingEventListener;
 import games.moisoni.google_iab.enums.PurchasedResult;
+import games.moisoni.google_iab.enums.SkuType;
 import games.moisoni.google_iab.enums.SupportState;
 import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.PurchaseInfo;
@@ -109,9 +110,21 @@ public class JavaSampleActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull List<PurchaseInfo> purchases) {
-                String sku;
+            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases, boolean isEmpty) {
+                /*
+                 * This will be called even when no purchased products are returned by the API
+                 * */
 
+                switch (skuType) {
+                    case INAPP:
+                        //TODO - non-consumable/consumable products
+                        break;
+                    case SUBS:
+                        //TODO - subscription products
+                        break;
+                }
+
+                String sku;
                 for (PurchaseInfo purchaseInfo : purchases) {
                     sku = purchaseInfo.getSku();
 
@@ -178,7 +191,11 @@ public class JavaSampleActivity extends AppCompatActivity {
             @Override
             public void onPurchaseConsumed(@NonNull PurchaseInfo purchase) {
                 /*
-                 * CONSUMABLE products entitlement can be granted either here or in onProductsPurchased
+                 * Grant user entitlement for CONSUMABLE products here
+                 *
+                 * Even though onProductsPurchased is triggered when a purchase is successfully made
+                 * there might be a problem along the way with the payment and the user will be able consume the product
+                 * without actually paying
                  * */
 
                 String consumedSku = purchase.getSku();
@@ -206,6 +223,18 @@ public class JavaSampleActivity extends AppCompatActivity {
                         break;
                     case CONSUME_ERROR:
                         //TODO - error during consumption
+                        break;
+                    case CONSUME_WARNING:
+                        /*
+                         * This will be triggered when a consumable purchase has a PENDING state
+                         * User entitlement must be granted when the state is PURCHASED
+                         *
+                         * PENDING transactions usually occur when users choose cash as their form of payment
+                         *
+                         * Here users can be informed that it may take a while until the purchase complete
+                         * and to come back later to receive their purchase
+                         * */
+                        //TODO - warning during consumption
                         break;
                     case ACKNOWLEDGE_ERROR:
                         //TODO - error during acknowledgment
