@@ -11,6 +11,7 @@ import games.moisoni.google_iab.BillingConnector
 import games.moisoni.google_iab.BillingEventListener
 import games.moisoni.google_iab.enums.ErrorType
 import games.moisoni.google_iab.enums.PurchasedResult
+import games.moisoni.google_iab.enums.SkuType
 import games.moisoni.google_iab.enums.SupportState
 import games.moisoni.google_iab.models.BillingResponse
 import games.moisoni.google_iab.models.PurchaseInfo
@@ -111,7 +112,27 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onPurchasedProductsFetched(purchases: MutableList<PurchaseInfo>) {
+            override fun onPurchasedProductsFetched(
+                skuType: SkuType,
+                purchases: MutableList<PurchaseInfo>,
+                isEmpty: Boolean
+            ) {
+                /*
+                * This will be called even when no purchased products are returned by the API
+                * */
+
+                when (skuType) {
+                    SkuType.INAPP -> {
+                        //TODO - non-consumable/consumable products
+                    }
+                    SkuType.SUBS -> {
+                        //TODO - subscription products
+                    }
+                    else -> {
+                        Log.d("BillingConnector", "None of the above SkuType match")
+                    }
+                }
+
                 purchases.forEach {
                     when (it.sku) {
                         "non_consumable_id2" -> {
@@ -191,7 +212,11 @@ class KotlinSampleActivity : AppCompatActivity() {
 
             override fun onPurchaseConsumed(purchase: PurchaseInfo) {
                 /*
-                 * CONSUMABLE products entitlement can be granted either here or in onProductsPurchased
+                 * Grant user entitlement for CONSUMABLE products here
+                 *
+                 * Even though onProductsPurchased is triggered when a purchase is successfully made
+                 * there might be a problem along the way with the payment and the user will be able consume the product
+                 * without actually paying
                  * */
 
                 when (purchase.sku) {
@@ -225,6 +250,18 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
                     ErrorType.CONSUME_ERROR -> {
                         //TODO - error during consumption
+                    }
+                    ErrorType.CONSUME_WARNING -> {
+                        /*
+                        * This will be triggered when a consumable purchase has a PENDING state
+                        * User entitlement must be granted when the state is PURCHASED
+                        *
+                        * PENDING transactions usually occur when users choose cash as their form of payment
+                        *
+                        * Here users can be informed that it may take a while until the purchase complete
+                        * and to come back later to receive their purchase
+                        * */
+                        //TODO - warning during consumption
                     }
                     ErrorType.ACKNOWLEDGE_ERROR -> {
                         //TODO - error during acknowledgment
