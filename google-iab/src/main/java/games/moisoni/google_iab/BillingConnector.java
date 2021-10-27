@@ -443,6 +443,10 @@ public class BillingConnector {
                 if (billingResult.getResponseCode() == OK) {
                     if (inAppPurchases.isEmpty()) {
                         Log("Query IN-APP Purchases: the list is empty");
+
+                        //in this case the inAppPurchases list returned by the API is empty
+                        List<PurchaseInfo> emptyPurchases = new ArrayList<>();
+                        findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(SkuType.INAPP, emptyPurchases, true));
                     } else {
                         Log("Query IN-APP Purchases: data found and progress");
 
@@ -459,6 +463,10 @@ public class BillingConnector {
                     if (billingResult.getResponseCode() == OK) {
                         if (subscriptionPurchases.isEmpty()) {
                             Log("Query SUBS Purchases: the list is empty");
+
+                            //in this case the subscriptionPurchases list returned by the API is empty
+                            List<PurchaseInfo> emptyPurchases = new ArrayList<>();
+                            findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(SkuType.SUBS, emptyPurchases, true));
                         } else {
                             Log("Query SUBS Purchases: data found and progress");
 
