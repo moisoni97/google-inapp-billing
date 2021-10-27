@@ -559,19 +559,28 @@ public class BillingConnector {
     public void consumePurchase(PurchaseInfo purchaseInfo) {
         if (checkSkuBeforeInteraction(purchaseInfo.getSku())) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
-                ConsumeParams consumeParams = ConsumeParams.newBuilder().setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
+                if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                    ConsumeParams consumeParams = ConsumeParams.newBuilder()
+                            .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
 
-                billingClient.consumeAsync(consumeParams, (billingResult, purchaseToken) -> {
-                    if (billingResult.getResponseCode() == OK) {
-                        purchasedProductsList.remove(purchaseInfo);
-                        findUiHandler().post(() -> billingEventListener.onPurchaseConsumed(purchaseInfo));
-                    } else {
-                        Log("Handling consumables: error during consumption attempt: " + billingResult.getDebugMessage());
+                    billingClient.consumeAsync(consumeParams, (billingResult, purchaseToken) -> {
+                        if (billingResult.getResponseCode() == OK) {
+                            purchasedProductsList.remove(purchaseInfo);
+                            findUiHandler().post(() -> billingEventListener.onPurchaseConsumed(purchaseInfo));
+                        } else {
+                            Log("Handling consumables: error during consumption attempt: " + billingResult.getDebugMessage());
 
-                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                                new BillingResponse(ErrorType.CONSUME_ERROR, billingResult)));
-                    }
-                });
+                            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
+                                    new BillingResponse(ErrorType.CONSUME_ERROR, billingResult)));
+                        }
+                    });
+                } else if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING) {
+                    Log("Handling consumables: purchase can not be consumed because the state is PENDING. " +
+                            "A purchase can be consumed only when the state is PURCHASED");
+
+                    findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CONSUME_WARNING,
+                            "Warning: purchase can not be consumed because the state is PENDING. Please consume the purchase later", defaultResponseCode)));
+                }
             }
         }
     }
