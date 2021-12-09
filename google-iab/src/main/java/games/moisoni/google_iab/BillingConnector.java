@@ -722,4 +722,16 @@ public class BillingConnector {
             Log.d(TAG, debugMessage);
         }
     }
+
+    /**
+     * Called to release the BillingClient instance
+     * <p>
+     * To avoid leaks this method should be called when BillingConnector is no longer needed
+     */
+    public void release() {
+        if (billingClient != null && billingClient.isReady()) {
+            Log("BillingClient instance release: ending connection...");
+            billingClient.endConnection();
+        }
+    }
 }
