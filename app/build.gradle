@@ -11,8 +11,8 @@ android {
         applicationId "games.moisoni.google_inapp_billing"
         minSdkVersion 16
         targetSdkVersion 31
-        versionCode 6
-        versionName "1.0.6"
+        versionCode 7
+        versionName "1.0.7"
 
         multiDexEnabled true
 
@@ -40,10 +40,10 @@ dependencies {
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
-    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
     implementation 'com.google.android.material:material:1.4.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.5.31"
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.6.0"
 
     implementation 'com.intuit.sdp:sdp-android:1.0.6'
     implementation 'com.intuit.ssp:ssp-android:1.0.6'
