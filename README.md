@@ -244,6 +244,20 @@ billingConnector.subscribe(this, "sku_id");
 billingConnector.unsubscribe(this, "sku_id");
 ```
 
+# Release instance
+
+* To avoid memory leaks don't forget to release the BillingConnector instance when it's no longer needed.
+
+```java
+@Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (billingConnector != null) {
+            billingConnector.release();
+        }
+    }
+```
+
 # Kotlin
 
 `Kotlin` is interoperable with `Java` and vice versa. This library works without any issues in `Kotlin` projects.
