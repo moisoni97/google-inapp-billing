@@ -70,7 +70,8 @@ class KotlinSampleActivity : AppCompatActivity() {
 
         billingConnector = BillingConnector(
             this,
-            "license_key") //"license_key" - public developer key from Play Console
+            "license_key"
+        ) //"license_key" - public developer key from Play Console
             .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
             .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
             .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
@@ -483,5 +484,10 @@ class KotlinSampleActivity : AppCompatActivity() {
         * To cancel a subscription
         * */
         billingConnector.unsubscribe(this, "sku_id")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        billingConnector.release()
     }
 }

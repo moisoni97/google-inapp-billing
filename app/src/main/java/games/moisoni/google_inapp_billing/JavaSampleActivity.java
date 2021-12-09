@@ -417,4 +417,12 @@ public class JavaSampleActivity extends AppCompatActivity {
          * */
         billingConnector.unsubscribe(JavaSampleActivity.this, "sku_id");
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (billingConnector != null) {
+            billingConnector.release();
+        }
+    }
 }
