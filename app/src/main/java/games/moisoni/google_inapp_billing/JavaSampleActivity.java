@@ -110,7 +110,7 @@ public class JavaSampleActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases, boolean isEmpty) {
+            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases) {
                 /*
                  * This will be called even when no purchased products are returned by the API
                  * */
