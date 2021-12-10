@@ -443,15 +443,11 @@ public class BillingConnector {
                 if (billingResult.getResponseCode() == OK) {
                     if (inAppPurchases.isEmpty()) {
                         Log("Query IN-APP Purchases: the list is empty");
-
-                        //in this case the inAppPurchases list returned by the API is empty
-                        List<PurchaseInfo> emptyPurchases = new ArrayList<>();
-                        findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(SkuType.INAPP, emptyPurchases, true));
                     } else {
                         Log("Query IN-APP Purchases: data found and progress");
-
-                        processPurchases(SkuType.INAPP, inAppPurchases, true);
                     }
+
+                    processPurchases(SkuType.INAPP, inAppPurchases, true);
                 } else {
                     Log("Query IN-APP Purchases: failed");
                 }
@@ -463,15 +459,11 @@ public class BillingConnector {
                     if (billingResult.getResponseCode() == OK) {
                         if (subscriptionPurchases.isEmpty()) {
                             Log("Query SUBS Purchases: the list is empty");
-
-                            //in this case the subscriptionPurchases list returned by the API is empty
-                            List<PurchaseInfo> emptyPurchases = new ArrayList<>();
-                            findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(SkuType.SUBS, emptyPurchases, true));
                         } else {
                             Log("Query SUBS Purchases: data found and progress");
-
-                            processPurchases(SkuType.SUBS, subscriptionPurchases, true);
                         }
+
+                        processPurchases(SkuType.SUBS, subscriptionPurchases, true);
                     } else {
                         Log("Query SUBS Purchases: failed");
                     }
@@ -508,51 +500,48 @@ public class BillingConnector {
      * Checks purchases signature for more security
      */
     private void processPurchases(SkuType skuType, List<Purchase> allPurchases, boolean purchasedProductsFetched) {
-        if (!allPurchases.isEmpty()) {
+        List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
 
-            List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
+        //create a list with signature valid purchases
+        List<Purchase> validPurchases = allPurchases.stream().filter(this::isPurchaseSignatureValid).collect(Collectors.toList());
+        for (Purchase purchase : validPurchases) {
 
-            //create a list with signature valid purchases
-            List<Purchase> validPurchases = allPurchases.stream().filter(this::isPurchaseSignatureValid).collect(Collectors.toList());
-            for (Purchase purchase : validPurchases) {
+            //query all SKUs as a list
+            List<String> purchasesSkus = purchase.getSkus();
 
-                //query all SKUs as a list
-                List<String> purchasesSkus = purchase.getSkus();
+            //loop through all SKUs and progress for each SKU individually
+            for (int i = 0; i < purchasesSkus.size(); i++) {
+                String purchaseSku = purchasesSkus.get(i);
 
-                //loop through all SKUs and progress for each SKU individually
-                for (int i = 0; i < purchasesSkus.size(); i++) {
-                    String purchaseSku = purchasesSkus.get(i);
+                Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(purchaseSku)).findFirst();
+                if (skuInfo.isPresent()) {
+                    SkuDetails skuDetails = skuInfo.get().getSkuDetails();
 
-                    Optional<SkuInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(purchaseSku)).findFirst();
-                    if (skuInfo.isPresent()) {
-                        SkuDetails skuDetails = skuInfo.get().getSkuDetails();
+                    PurchaseInfo purchaseInfo = new PurchaseInfo(generateSkuInfo(skuDetails), purchase);
+                    signatureValidPurchases.add(purchaseInfo);
 
-                        PurchaseInfo purchaseInfo = new PurchaseInfo(generateSkuInfo(skuDetails), purchase);
-                        signatureValidPurchases.add(purchaseInfo);
-
-                    }
                 }
             }
+        }
 
-            if (purchasedProductsFetched) {
-                fetchedPurchasedProducts = true;
-                findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases, false));
-            } else {
-                findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
+        if (purchasedProductsFetched) {
+            fetchedPurchasedProducts = true;
+            findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases));
+        } else {
+            findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
+        }
+
+        purchasedProductsList.addAll(signatureValidPurchases);
+
+        for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
+            if (shouldAutoConsume) {
+                consumePurchase(purchaseInfo);
             }
 
-            purchasedProductsList.addAll(signatureValidPurchases);
-
-            for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
-                if (shouldAutoConsume) {
-                    consumePurchase(purchaseInfo);
-                }
-
-                if (shouldAutoAcknowledge) {
-                    boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
-                    if (!isSkuConsumable) {
-                        acknowledgePurchase(purchaseInfo);
-                    }
+            if (shouldAutoAcknowledge) {
+                boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
+                if (!isSkuConsumable) {
+                    acknowledgePurchase(purchaseInfo);
                 }
             }
         }
@@ -730,7 +719,7 @@ public class BillingConnector {
      */
     public void release() {
         if (billingClient != null && billingClient.isReady()) {
-            Log("BillingClient instance release: ending connection...");
+            Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
         }
     }
