@@ -25,7 +25,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.0.7'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.0.8'
 }
 ```
 
@@ -43,7 +43,7 @@ dependencies {
 android {
   compileOptions {
     coreLibraryDesugaringEnabled true
-    
+
     sourceCompatibility JavaVersion.VERSION_11
     targetCompatibility JavaVersion.VERSION_11
   }
@@ -71,7 +71,7 @@ This step is required to enable support for some APIs on lower SDK versions that
 * Create an instance of BillingConnector class. Constructor will take 2 parameters:
   - *Context*
   - *License key from `Play Console`*
-  
+
 ```java
 billingConnector = new BillingConnector(this, "license_key")
                 .setConsumableIds(consumableIds)
@@ -93,7 +93,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases, boolean isEmpty) {
+            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases) {
                 /*Provides a list with fetched purchased products*/
                 
                 /*
