@@ -115,8 +115,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
             override fun onPurchasedProductsFetched(
                 skuType: SkuType,
-                purchases: MutableList<PurchaseInfo>,
-                isEmpty: Boolean
+                purchases: MutableList<PurchaseInfo>
             ) {
                 /*
                 * This will be called even when no purchased products are returned by the API
