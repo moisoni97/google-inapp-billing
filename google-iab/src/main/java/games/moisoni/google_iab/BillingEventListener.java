@@ -4,10 +4,10 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
-import games.moisoni.google_iab.enums.SkuType;
+import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.models.BillingResponse;
+import games.moisoni.google_iab.models.ProductInfo;
 import games.moisoni.google_iab.models.PurchaseInfo;
-import games.moisoni.google_iab.models.SkuInfo;
 
 public interface BillingEventListener {
     /**
@@ -15,15 +15,15 @@ public interface BillingEventListener {
      *
      * @param skuDetails - a list with available SKUs
      */
-    void onProductsFetched(@NonNull List<SkuInfo> skuDetails);
+    void onProductsFetched(@NonNull List<ProductInfo> skuDetails);
 
     /**
      * Callback will be triggered when purchased products are queried from Play Console
      *
      * @param purchases - a list with owned products
-     * @param skuType   - the type of SKU, either INAPP or SUBS
+     * @param skuType   - the type of SKU, either IN_APP or SUBS
      */
-    void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases);
+    void onPurchasedProductsFetched(@NonNull ProductType skuType, @NonNull List<PurchaseInfo> purchases);
 
     /**
      * Callback will be triggered when a product is purchased successfully
