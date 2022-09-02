@@ -3,20 +3,20 @@ package games.moisoni.google_iab.models;
 import com.android.billingclient.api.AccountIdentifiers;
 import com.android.billingclient.api.Purchase;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import games.moisoni.google_iab.enums.SkuProductType;
 
 public class PurchaseInfo {
 
     private final SkuProductType skuProductType;
-    private final SkuInfo skuInfo;
+    private final ProductInfo skuInfo;
     private final Purchase purchase;
 
     private final String sku;
 
     private final AccountIdentifiers accountIdentifiers;
-    private final ArrayList<String> skus;
+    private final List<String> products;
 
     private final String orderId;
     private final String purchaseToken;
@@ -33,13 +33,13 @@ public class PurchaseInfo {
     private final boolean isAcknowledged;
     private final boolean isAutoRenewing;
 
-    public PurchaseInfo(SkuInfo skuInfo, Purchase purchase) {
+    public PurchaseInfo(ProductInfo skuInfo, Purchase purchase) {
         this.skuInfo = skuInfo;
         this.purchase = purchase;
         this.sku = skuInfo.getSku();
         this.skuProductType = skuInfo.getSkuProductType();
         this.accountIdentifiers = purchase.getAccountIdentifiers();
-        this.skus = purchase.getSkus();
+        this.products = purchase.getProducts();
         this.orderId = purchase.getOrderId();
         this.purchaseToken = purchase.getPurchaseToken();
         this.originalJson = purchase.getOriginalJson();
@@ -57,7 +57,7 @@ public class PurchaseInfo {
         return skuProductType;
     }
 
-    public SkuInfo getSkuInfo() {
+    public ProductInfo getSkuInfo() {
         return skuInfo;
     }
 
@@ -73,8 +73,8 @@ public class PurchaseInfo {
         return accountIdentifiers;
     }
 
-    public ArrayList<String> getSkus() {
-        return skus;
+    public List<String> getProducts() {
+        return products;
     }
 
     public String getOrderId() {

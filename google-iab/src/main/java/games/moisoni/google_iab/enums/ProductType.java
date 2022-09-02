@@ -1,6 +1,6 @@
 package games.moisoni.google_iab.enums;
 
-public enum SkuType {
+public enum ProductType {
     INAPP,
     SUBS,
     NONE
