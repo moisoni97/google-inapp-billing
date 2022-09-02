@@ -17,11 +17,12 @@ import java.util.List;
 import games.moisoni.google_iab.BillingConnector;
 import games.moisoni.google_iab.BillingEventListener;
 import games.moisoni.google_iab.enums.PurchasedResult;
-import games.moisoni.google_iab.enums.SkuType;
+import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.SupportState;
 import games.moisoni.google_iab.models.BillingResponse;
+import games.moisoni.google_iab.models.ProductInfo;
 import games.moisoni.google_iab.models.PurchaseInfo;
-import games.moisoni.google_iab.models.SkuInfo;
+
 
 /**
  * This is a sample app to demonstrate how to implement 'google-inapp-billing' library
@@ -34,7 +35,7 @@ import games.moisoni.google_iab.models.SkuInfo;
 public class JavaSampleActivity extends AppCompatActivity {
 
     private ImageView exitApp;
-    private RelativeLayout purchaseConsumable, purchaseNonConsumable, purchaseSubscription, cancelSubscription;
+    private RelativeLayout purchaseConsumable, purchaseNonConsumable, purchaseSubscription, purchaseSubscriptionOfferOne, purchaseSubscriptionOfferTwo, cancelSubscription;
 
     private BillingConnector billingConnector;
 
@@ -42,7 +43,7 @@ public class JavaSampleActivity extends AppCompatActivity {
     private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
 
     //list for example purposes to demonstrate how to synchronously check a purchase state
-    private final List<SkuInfo> fetchedSkuInfoList = new ArrayList<>();
+    private final List<ProductInfo> fetchedSkuInfoList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,21 +59,21 @@ public class JavaSampleActivity extends AppCompatActivity {
     private void initializeBillingClient() {
         //create a list with consumable ids
         List<String> consumableIds = new ArrayList<>();
-        consumableIds.add("consumable_id1");
-        consumableIds.add("consumable_id2");
-        consumableIds.add("consumable_id3");
+        consumableIds.add("consumable_id_1");
+        consumableIds.add("consumable_id_2");
+        consumableIds.add("consumable_id_3");
 
         //create a list with non-consumable ids
         List<String> nonConsumableIds = new ArrayList<>();
-        nonConsumableIds.add("non_consumable_id1");
-        nonConsumableIds.add("non_consumable_id2");
-        nonConsumableIds.add("non_consumable_id3");
+        nonConsumableIds.add("non_consumable_id_1");
+        nonConsumableIds.add("non_consumable_id_2");
+        nonConsumableIds.add("non_consumable_id_3");
 
         //create a list with subscription ids
         List<String> subscriptionIds = new ArrayList<>();
-        subscriptionIds.add("subscription_id1");
-        subscriptionIds.add("subscription_id2");
-        subscriptionIds.add("subscription_id3");
+        subscriptionIds.add("subscription_id_1");
+        subscriptionIds.add("subscription_id_2");
+        subscriptionIds.add("subscription_id_3");
 
         billingConnector = new BillingConnector(this, "license_key") //"license_key" - public developer key from Play Console
                 .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
@@ -85,15 +86,15 @@ public class JavaSampleActivity extends AppCompatActivity {
 
         billingConnector.setBillingEventListener(new BillingEventListener() {
             @Override
-            public void onProductsFetched(@NonNull List<SkuInfo> skuDetails) {
+            public void onProductsFetched(@NonNull List<ProductInfo> skuDetails) {
                 String sku;
                 String price;
 
-                for (SkuInfo skuInfo : skuDetails) {
+                for (ProductInfo skuInfo : skuDetails) {
                     sku = skuInfo.getSku();
                     price = skuInfo.getPrice();
 
-                    if (sku.equalsIgnoreCase("consumable_id1")) {
+                    if (sku.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Product fetched: " + sku);
                         Toast.makeText(JavaSampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
@@ -110,12 +111,12 @@ public class JavaSampleActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases) {
+            public void onPurchasedProductsFetched(@NonNull ProductType productType, @NonNull List<PurchaseInfo> purchases) {
                 /*
                  * This will be called even when no purchased products are returned by the API
                  * */
 
-                switch (skuType) {
+                switch (productType) {
                     case INAPP:
                         //TODO - non-consumable/consumable products
                         break;
@@ -128,7 +129,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                 for (PurchaseInfo purchaseInfo : purchases) {
                     sku = purchaseInfo.getSku();
 
-                    if (sku.equalsIgnoreCase("non_consumable_id2")) {
+                    if (sku.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Purchased product fetched: " + sku);
                         Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + sku, Toast.LENGTH_SHORT).show();
@@ -147,7 +148,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                     sku = purchaseInfo.getSku();
                     purchaseToken = purchaseInfo.getPurchaseToken();
 
-                    if (sku.equalsIgnoreCase("subscription_id3")) {
+                    if (sku.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
                         Log.d("BillingConnector", "Product purchased: " + sku);
                         Toast.makeText(JavaSampleActivity.this, "Product purchased: " + sku, Toast.LENGTH_SHORT).show();
@@ -179,7 +180,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                 String acknowledgedSku = purchase.getSku();
 
-                if (acknowledgedSku.equalsIgnoreCase("non_consumable_id2")) {
+                if (acknowledgedSku.equalsIgnoreCase("consumable_id_1")) {
                     //TODO - do something
                     Log.d("BillingConnector", "Acknowledged: " + acknowledgedSku);
                     Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
@@ -200,7 +201,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                 String consumedSku = purchase.getSku();
 
-                if (consumedSku.equalsIgnoreCase("consumable_id1")) {
+                if (consumedSku.equalsIgnoreCase("consumable_id_1")) {
                     //TODO - do something
                     Log.d("BillingConnector", "Consumed: " + consumedSku);
                     Toast.makeText(JavaSampleActivity.this, "Consumed: " + consumedSku, Toast.LENGTH_SHORT).show();
@@ -297,6 +298,8 @@ public class JavaSampleActivity extends AppCompatActivity {
         purchaseConsumable = findViewById(R.id.purchase_consumable);
         purchaseNonConsumable = findViewById(R.id.purchase_non_consumable);
         purchaseSubscription = findViewById(R.id.purchase_subscription);
+        purchaseSubscriptionOfferOne = findViewById(R.id.purchase_subscription_offer_one);
+        purchaseSubscriptionOfferTwo = findViewById(R.id.purchase_subscription_offer_two);
         cancelSubscription = findViewById(R.id.cancel_subscription);
 
         //init exit app button
@@ -306,20 +309,28 @@ public class JavaSampleActivity extends AppCompatActivity {
         BounceView.addAnimTo(purchaseConsumable);
         BounceView.addAnimTo(purchaseNonConsumable);
         BounceView.addAnimTo(purchaseSubscription);
+        BounceView.addAnimTo(purchaseSubscriptionOfferOne);
+        BounceView.addAnimTo(purchaseSubscriptionOfferTwo);
         BounceView.addAnimTo(cancelSubscription);
         BounceView.addAnimTo(exitApp);
     }
 
     private void clickListeners() {
+
         //purchase an item
-        purchaseConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "consumable_id1"));
-        purchaseNonConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "non_consumable_id2"));
+        purchaseConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "consumable_id_1"));
+        purchaseNonConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "non_consumable_id_2"));
 
         //purchase a subscription
-        purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id3"));
+        purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 0));
+
+        //purchase a subscription
+        //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
+        purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 0));
+        purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 1));
 
         //cancel a subscription
-        cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id3"));
+        cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id_1"));
 
         //exit app on button click
         exitApp.setOnClickListener(v -> finish());
@@ -362,7 +373,7 @@ public class JavaSampleActivity extends AppCompatActivity {
          *
          * To synchronously check a purchase state
          * */
-        for (SkuInfo skuInfo : fetchedSkuInfoList) {
+        for (ProductInfo skuInfo : fetchedSkuInfoList) {
             if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
                 //TODO - do something
                 Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is purchased");
@@ -397,18 +408,18 @@ public class JavaSampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public final void purchase(Activity activity, String skuId)
+         * public final void purchase(Activity activity, String skuId, int offerIndex)
          *
          * To purchase a non-consumable/consumable product
          * */
         billingConnector.purchase(JavaSampleActivity.this, "sku_id");
 
         /*
-         * public final void subscribe(Activity activity, String skuId)
+         * public final void subscribe(Activity activity, String skuId, int offerIndex)
          *
          * To purchase a subscription
          * */
-        billingConnector.subscribe(JavaSampleActivity.this, "sku_id");
+        billingConnector.subscribe(JavaSampleActivity.this, "sku_id", 0);
 
         /*
          * public final void unsubscribe(Activity activity, String skuId)

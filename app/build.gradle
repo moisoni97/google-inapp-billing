@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    compileSdkVersion 31
-    buildToolsVersion "30.0.3"
+    compileSdkVersion 33
+    buildToolsVersion "33.0.0"
 
     defaultConfig {
         applicationId "games.moisoni.google_inapp_billing"
         minSdkVersion 16
-        targetSdkVersion 31
-        versionCode 8
-        versionName "1.0.8"
+        targetSdkVersion 33
+        versionCode 9
+        versionName "2.0.0"
 
         multiDexEnabled true
 
@@ -40,13 +40,13 @@ dependencies {
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
-    implementation 'androidx.appcompat:appcompat:1.4.0'
-    implementation 'com.google.android.material:material:1.4.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.6.0"
+    implementation 'androidx.appcompat:appcompat:1.5.0'
+    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.7.10"
 
-    implementation 'com.intuit.sdp:sdp-android:1.0.6'
-    implementation 'com.intuit.ssp:ssp-android:1.0.6'
+    implementation 'com.intuit.sdp:sdp-android:1.1.0'
+    implementation 'com.intuit.ssp:ssp-android:1.1.0'
 
     implementation 'io.github.hariprasanths:bounceview-android:0.2.0'
 

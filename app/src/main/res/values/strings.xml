@@ -8,11 +8,16 @@
     <string name="consumable_product">Consumable Product</string>
     <string name="non_consumable_product">Non-Consumable Product</string>
     <string name="subscription_product">Subscription Product</string>
+    <string name="subscription_product_with_offer">Subscription Product with Offer</string>
 
     <string name="purchase">Purchase</string>
     <string name="subscribe">Subscribe</string>
     <string name="unsubscribe">Unsubscribe</string>
+    <string name="subscribe_offer_one">Subscribe Offer One</string>
+    <string name="subscribe_offer_two">Subscribe Offer Two</string>
 
     <string name="info_restart_message">You may need to restart after purchase for changes to take effect.</string>
     <string name="info_example_message">This sample shows how to implement in-app purchases (both consumable and non-consumable) and subscriptions.</string>
+    <string name="info_offer_message">Offer feature for subscription with Google Billing v5.</string>
+
 </resources>
