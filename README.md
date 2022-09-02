@@ -93,14 +93,14 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull SkuType skuType, @NonNull List<PurchaseInfo> purchases) {
+            public void onPurchasedProductsFetched(@NonNull SkuType productType, @NonNull List<PurchaseInfo> purchases) {
                 /*Provides a list with fetched purchased products*/
                 
                 /*
                  * This will be called even when no purchased products are returned by the API
                  * */
                 
-                switch (skuType) {
+                switch (productType) {
                     case INAPP:
                         //TODO - non-consumable/consumable products
                         break;
