@@ -20,6 +20,7 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +69,7 @@ public class BillingConnector {
     private List<String> nonConsumableIds;
     private List<String> subscriptionIds;
 
-    List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
+    private final List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
 
     private final List<ProductInfo> fetchedSkuInfoList = new ArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
@@ -255,24 +256,24 @@ public class BillingConnector {
         if (consumableIds == null || consumableIds.isEmpty()) {
             consumableIds = null;
         } else {
-            for (String item : consumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(INAPP).build());
+            for (String id : consumableIds) {
+                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
             }
         }
 
         if (nonConsumableIds == null || nonConsumableIds.isEmpty()) {
             nonConsumableIds = null;
         } else {
-            for (String item : nonConsumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(INAPP).build());
+            for (String id : nonConsumableIds) {
+                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
             }
         }
 
         if (subscriptionIds == null || subscriptionIds.isEmpty()) {
             subscriptionIds = null;
         } else {
-            for (String item : subscriptionIds) {
-                productSubsList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(SUBS).build());
+            for (String id : subscriptionIds) {
+                productSubsList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(SUBS).build());
             }
         }
 
@@ -357,7 +358,7 @@ public class BillingConnector {
 
         billingClient.queryProductDetailsAsync(skuDetailsParams, (billingResult, skuDetailsList) -> {
             if (billingResult.getResponseCode() == OK) {
-                if (skuDetailsList != null && skuDetailsList.isEmpty()) {
+                if (skuDetailsList.isEmpty()) {
                     Log("Query SKU Details: data not found. Make sure SKU ids are configured on Play Console");
 
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
@@ -365,29 +366,26 @@ public class BillingConnector {
                 } else {
                     Log("Query SKU Details: data found");
 
-                    if (skuDetailsList != null) {
-                        List<ProductInfo> fetchedSkuInfo = skuDetailsList.stream().map(this::generateSkuInfo).collect(Collectors.toList());
-                        fetchedSkuInfoList.addAll(fetchedSkuInfo);
+                    List<ProductInfo> fetchedSkuInfo = skuDetailsList.stream().map(this::generateSkuInfo).collect(Collectors.toList());
+                    fetchedSkuInfoList.addAll(fetchedSkuInfo);
 
-                        switch (skuType) {
-                            case INAPP:
-                            case SUBS:
-                                findUiHandler().post(() -> billingEventListener.onProductsFetched(fetchedSkuInfo));
-                                break;
-                            default:
-                                throw new IllegalStateException("SKU type is not implemented");
-                        }
-
-                        List<String> fetchedSkuIds = fetchedSkuInfo.stream().map(ProductInfo::getSku).collect(Collectors.toList());
-                        boolean isFetched = fetchedSkuIds.stream().anyMatch(productList::contains);
-
-                        if (isFetched) {
-                            fetchPurchasedProducts();
-                        }
-
-                    } else {
-                        Log("Query SKU Details: SKU details list is null");
+                    switch (skuType) {
+                        case INAPP:
+                        case SUBS:
+                            findUiHandler().post(() -> billingEventListener.onProductsFetched(fetchedSkuInfo));
+                            break;
+                        default:
+                            throw new IllegalStateException("SKU type is not implemented");
                     }
+
+                    List<String> fetchedSkuIds = fetchedSkuInfo.stream().map(ProductInfo::getSku).collect(Collectors.toList());
+                    List<String> productListIds = productList.stream().map(QueryProductDetailsParams.Product::zza).collect(Collectors.toList()); //according to the documentation "zza" is the product id
+                    boolean isFetched = fetchedSkuIds.stream().anyMatch(productListIds::contains);
+
+                    if (isFetched) {
+                        fetchPurchasedProducts();
+                    }
+
                 }
             } else {
                 Log("Query SKU Details: failed");
@@ -510,7 +508,7 @@ public class BillingConnector {
         for (Purchase purchase : validPurchases) {
 
             //query all SKUs as a list
-            List<String> purchasesSkus = purchase.getSkus();
+            List<String> purchasesSkus = purchase.getProducts();
 
             //loop through all SKUs and progress for each SKU individually
             for (int i = 0; i < purchasesSkus.size(); i++) {
@@ -633,27 +631,36 @@ public class BillingConnector {
     /**
      * Called to purchase a non-consumable/consumable product
      * <p>
-     * The offset Index represents the different offers in the subscription.
+     * The offer index represents the different offers in the subscription.
      */
-    private void purchase(Activity activity, String productId, int offerIndex) {
+    private void purchase(Activity activity, String productId, int selectedOfferIndex) {
         if (checkSkuBeforeInteraction(productId)) {
             Optional<ProductInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(productId)).findFirst();
             if (skuInfo.isPresent()) {
-
                 ProductDetails productDetails = skuInfo.get().getSkuDetails();
+                ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
-                //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
-                String offerToken = productDetails
-                        .getSubscriptionOfferDetails()
-                        .get(offerIndex)
-                        .getOfferToken();
-
-                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList =
-                        List.of(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(productDetails).setOfferToken(offerToken).build());
+                if (productDetails.getProductType().equals(SUBS) && productDetails.getSubscriptionOfferDetails() != null) {
+                    //the offer index represents the different offers in the subscription
+                    //offer index is only available for subscriptions starting with Google Billing v5+
+                    productDetailsParamsList = ImmutableList.of(
+                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                    .setProductDetails(productDetails)
+                                    .setOfferToken(productDetails.getSubscriptionOfferDetails().get(selectedOfferIndex).getOfferToken())
+                                    .build()
+                    );
+                } else {
+                    productDetailsParamsList = ImmutableList.of(
+                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                    .setProductDetails(productDetails)
+                                    .build()
+                    );
+                }
 
                 BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
                         .setProductDetailsParamsList(productDetailsParamsList)
                         .build();
+
                 billingClient.launchBillingFlow(activity, billingFlowParams);
             } else {
                 Log("Billing client can not launch billing flow because SKU details are missing");
@@ -662,15 +669,27 @@ public class BillingConnector {
     }
 
     /**
-     * Called to purchase a subscription
+     * Called to purchase a subscription with offers
      * <p>
      * To avoid confusion while trying to purchase a subscription
      * Does the same thing as purchase() method
-     *
-     * If there is only one base package, offerIndex = 0
+     * <p>
+     * For subscription with only one base package, use subscribe(activity, productId) method or selectedOfferIndex = 0
      */
-    public final void subscribe(Activity activity, String productId, int offerIndex) {
-        purchase(activity, productId, offerIndex);
+    public final void subscribe(Activity activity, String productId, int selectedOfferIndex) {
+        purchase(activity, productId, selectedOfferIndex);
+    }
+
+    /**
+     * Called to purchase a simple subscription
+     * <p>
+     * To avoid confusion while trying to purchase a subscription
+     * Does the same thing as purchase() method
+     * <p>
+     * For subscription with multiple offers, use subscribe(activity, productId, selectedOfferIndex) method
+     */
+    public final void subscribe(Activity activity, String productId) {
+        purchase(activity, productId);
     }
 
     /**
