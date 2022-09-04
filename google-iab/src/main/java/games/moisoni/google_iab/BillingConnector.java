@@ -639,14 +639,16 @@ public class BillingConnector {
         if (checkSkuBeforeInteraction(productId)) {
             Optional<ProductInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(productId)).findFirst();
             if (skuInfo.isPresent()) {
-
+                String offerToken = "";
                 ProductDetails productDetails = skuInfo.get().getSkuDetails();
 
                 //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
-                String offerToken = productDetails
-                        .getSubscriptionOfferDetails()
-                        .get(offerIndex)
-                        .getOfferToken();
+                if (productDetails.getProductType() == SUBS) {
+                    offerToken = productDetails
+                            .getSubscriptionOfferDetails()
+                            .get(offerIndex)
+                            .getOfferToken();
+                }
 
                 List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList =
                         List.of(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(productDetails).setOfferToken(offerToken).build());
@@ -666,7 +668,7 @@ public class BillingConnector {
      * <p>
      * To avoid confusion while trying to purchase a subscription
      * Does the same thing as purchase() method
-     *
+     * <p>
      * If there is only one base package, offerIndex = 0
      */
     public final void subscribe(Activity activity, String productId, int offerIndex) {
