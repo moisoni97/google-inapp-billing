@@ -631,36 +631,30 @@ public class BillingConnector {
     /**
      * Called to purchase a non-consumable/consumable product
      * <p>
-     * The offer index represents the different offers in the subscription.
+     * The offset Index represents the different offers in the subscription.
      */
-    private void purchase(Activity activity, String productId, int selectedOfferIndex) {
+    private void purchase(Activity activity, String productId, int offerIndex) {
         if (checkSkuBeforeInteraction(productId)) {
             Optional<ProductInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getSku().equals(productId)).findFirst();
             if (skuInfo.isPresent()) {
-                ProductDetails productDetails = skuInfo.get().getSkuDetails();
-                ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
-                if (productDetails.getProductType().equals(SUBS) && productDetails.getSubscriptionOfferDetails() != null) {
-                    //the offer index represents the different offers in the subscription
-                    //offer index is only available for subscriptions starting with Google Billing v5+
-                    productDetailsParamsList = ImmutableList.of(
-                            BillingFlowParams.ProductDetailsParams.newBuilder()
-                                    .setProductDetails(productDetails)
-                                    .setOfferToken(productDetails.getSubscriptionOfferDetails().get(selectedOfferIndex).getOfferToken())
-                                    .build()
-                    );
-                } else {
-                    productDetailsParamsList = ImmutableList.of(
-                            BillingFlowParams.ProductDetailsParams.newBuilder()
-                                    .setProductDetails(productDetails)
-                                    .build()
-                    );
+                String offerToken = "";
+                ProductDetails productDetails = skuInfo.get().getSkuDetails();
+
+                //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
+                if (productDetails.getProductType() == SUBS) {
+                    offerToken = productDetails
+                            .getSubscriptionOfferDetails()
+                            .get(offerIndex)
+                            .getOfferToken();
                 }
+
+                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList =
+                        List.of(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(productDetails).setOfferToken(offerToken).build());
 
                 BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
                         .setProductDetailsParamsList(productDetailsParamsList)
                         .build();
-
                 billingClient.launchBillingFlow(activity, billingFlowParams);
             } else {
                 Log("Billing client can not launch billing flow because SKU details are missing");
@@ -669,15 +663,15 @@ public class BillingConnector {
     }
 
     /**
-     * Called to purchase a subscription with offers
+     * Called to purchase a subscription
      * <p>
      * To avoid confusion while trying to purchase a subscription
      * Does the same thing as purchase() method
-     * <p>
-     * For subscription with only one base package, use subscribe(activity, productId) method or selectedOfferIndex = 0
+     *
+     * If there is only one base package, offerIndex = 0
      */
-    public final void subscribe(Activity activity, String productId, int selectedOfferIndex) {
-        purchase(activity, productId, selectedOfferIndex);
+    public final void subscribe(Activity activity, String productId, int offerIndex) {
+        purchase(activity, productId, offerIndex);
     }
 
     /**
