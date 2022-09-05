@@ -643,7 +643,7 @@ public class BillingConnector {
                 ProductDetails productDetails = skuInfo.get().getSkuDetails();
 
                 //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
-                if (productDetails.getProductType() == SUBS) {
+                if (productDetails.getProductType().equals(SUBS)) {
                     offerToken = productDetails
                             .getSubscriptionOfferDetails()
                             .get(offerIndex)
