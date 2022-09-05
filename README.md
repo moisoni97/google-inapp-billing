@@ -1,9 +1,9 @@
-# Google In-App Billing Library v4+ [![API](https://img.shields.io/badge/API-16%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=16) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
+# Google In-App Billing Library v5+ [![API](https://img.shields.io/badge/API-16%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=16) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
 A simple implementation of the Android In-App Billing API.
 
-It supports: in-app purchases (both consumable and non-consumable) and subscriptions.
+It supports: in-app purchases (both consumable and non-consumable) and subscriptions with a base plan or multiple offers.
 
-![image preview](https://i.postimg.cc/kMSPYb5H/Google-In-App-Billing-Image.jpg)
+![image preview](https://i.postimg.cc/sxfcQF46/Google-In-App-Billing-Image.jpg)
 ![video example](https://i.postimg.cc/DZX0sDY2/Google-In-App-Billing-Purchase.gif)
 
 # Getting Started
@@ -25,7 +25,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.0.8'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.0.9'
 }
 ```
 
@@ -88,26 +88,17 @@ billingConnector = new BillingConnector(this, "license_key")
 ```java
 billingConnector.setBillingEventListener(new BillingEventListener() {
             @Override
-            public void onProductsFetched(@NonNull List<SkuInfo> skuDetails) {
+            public void onProductsFetched(@NonNull List<ProductInfo> productDetails) {
                 /*Provides a list with fetched products*/
             }
 
             @Override
-            public void onPurchasedProductsFetched(@NonNull SkuType productType, @NonNull List<PurchaseInfo> purchases) {
+            public void onPurchasedProductsFetched(@NonNull ProductType productType, @NonNull List<PurchaseInfo> purchases) {
                 /*Provides a list with fetched purchased products*/
                 
                 /*
                  * This will be called even when no purchased products are returned by the API
                  * */
-                
-                switch (productType) {
-                    case INAPP:
-                        //TODO - non-consumable/consumable products
-                        break;
-                    case SUBS:
-                        //TODO - subscription products
-                        break;
-                }
             }
 
             @Override
@@ -156,8 +147,8 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
                     case CLIENT_DISCONNECTED:
                         //TODO - client has disconnected
                         break;
-                    case SKU_NOT_EXIST:
-                        //TODO - sku does not exist
+                    case PRODUCT_NOT_EXIST:
+                        //TODO - product does not exist
                         break;
                     case CONSUME_ERROR:
                         //TODO - error during consumption
@@ -193,7 +184,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
                         //TODO - error occurred while querying purchased products
                         break;
                     case BILLING_ERROR:
-                        //TODO - error occurred during initialization / querying sku details
+                        //TODO - error occurred during initialization / querying product details
                         break;
                     case USER_CANCELED:
                         //TODO - user pressed back or canceled a dialog
@@ -229,19 +220,26 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
 * Purchase a non-consumable/consumable product:
 
 ```java
-billingConnector.purchase(this, "sku_id");
+billingConnector.purchase(this, "product_id");
 ```
 
-* Purchase a subscription:
+* Purchase a subscription with a base plan:
 
 ```java
-billingConnector.subscribe(this, "sku_id");
+billingConnector.subscribe(this, "product_id");
+```
+
+* Purchase a subscription with multiple offers:
+
+```java
+billingConnector.subscribe(this, "product_id", 0);
+billingConnector.subscribe(this, "product_id", 1);
 ```
 
 * Cancel a subscription:
 
 ```java
-billingConnector.unsubscribe(this, "sku_id");
+billingConnector.unsubscribe(this, "product_id");
 ```
 
 # Release instance
