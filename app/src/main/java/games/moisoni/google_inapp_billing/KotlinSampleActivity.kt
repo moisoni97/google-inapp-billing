@@ -33,12 +33,14 @@ class KotlinSampleActivity : AppCompatActivity() {
     private lateinit var purchaseConsumable: RelativeLayout
     private lateinit var purchaseNonConsumable: RelativeLayout
     private lateinit var purchaseSubscription: RelativeLayout
+    private lateinit var purchaseSubscriptionOfferOne: RelativeLayout
+    private lateinit var purchaseSubscriptionOfferTwo: RelativeLayout
     private lateinit var cancelSubscription: RelativeLayout
 
     private lateinit var billingConnector: BillingConnector
 
     private val purchasedInfoList = mutableListOf<PurchaseInfo>()
-    private val fetchedSkuInfoList = mutableListOf<ProductInfo>()
+    private val fetchedProductInfoList = mutableListOf<ProductInfo>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.AppTheme)
@@ -53,96 +55,100 @@ class KotlinSampleActivity : AppCompatActivity() {
     private fun initializeBillingClient() {
         //create a list with consumable ids
         val consumableIds = mutableListOf<String>()
-        consumableIds.add("consumable_id1")
-        consumableIds.add("consumable_id2")
-        consumableIds.add("consumable_id3")
+        consumableIds.add("consumable_id_1")
+        consumableIds.add("consumable_id_2")
+        consumableIds.add("consumable_id_3")
 
         //create a list with non-consumable ids
         val nonConsumableIds = mutableListOf<String>()
-        nonConsumableIds.add("non_consumable_id1")
-        nonConsumableIds.add("non_consumable_id2")
-        nonConsumableIds.add("non_consumable_id3")
+        nonConsumableIds.add("non_consumable_id_1")
+        nonConsumableIds.add("non_consumable_id_2")
+        nonConsumableIds.add("non_consumable_id_3")
 
         //create a list with subscription ids
         val subscriptionIds = mutableListOf<String>()
-        subscriptionIds.add("subscription_id1")
-        subscriptionIds.add("subscription_id2")
-        subscriptionIds.add("subscription_id3")
+        subscriptionIds.add("subscription_id_1")
+        subscriptionIds.add("subscription_id_2")
+        subscriptionIds.add("subscription_id_3")
 
         billingConnector = BillingConnector(
-                this,
-                "license_key"
-        ) //"license_key" - public developer key from Play Console
-                .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
-                .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
-                .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
-                .autoAcknowledge() //legacy option - better call this. Alternatively purchases can be acknowledge via public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
-                .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via public method consumePurchase(PurchaseInfo purchaseInfo)"
-                .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
-                .connect() //to connect billing client with Play Console
+            this,
+            "license_key") //"license_key" - public developer key from Play Console
+            .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
+            .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
+            .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
+            .autoAcknowledge() //legacy option - better call this. Alternatively purchases can be acknowledge via public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
+            .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via public method consumePurchase(PurchaseInfo purchaseInfo)"
+            .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
+            .connect() //to connect billing client with Play Console
 
         billingConnector.setBillingEventListener(object : BillingEventListener {
-            override fun onProductsFetched(skuDetails: MutableList<ProductInfo>) {
-                var sku: String
+            override fun onProductsFetched(productDetails: MutableList<ProductInfo>) {
+                var product: String
                 var price: String
 
-                for (skuInfo in skuDetails) {
-                    sku = skuInfo.sku
-                    price = skuInfo.price
+                for (productInfo in productDetails) {
+                    product = productInfo.product
+                    price = productInfo.price
 
-                    if (sku.equals("consumable_id1", ignoreCase = true)) {
+                    if (product.equals("consumable_id_1", ignoreCase = true)) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product fetched: $sku")
+                        Log.d("BillingConnector", "Product fetched: $product")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Product fetched: $sku",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Product fetched: $product",
+                            Toast.LENGTH_SHORT
                         ).show()
 
                         //TODO - do something
                         Log.d("BillingConnector", "Product price: $price")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Product price: $price",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Product price: $price",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
 
                     //TODO - similarly check for other ids
 
-                    fetchedSkuInfoList.add(skuInfo) //check "usefulPublicMethods" to see how to synchronously check a purchase state
+                    fetchedProductInfoList.add(productInfo) //check "usefulPublicMethods" to see how to synchronously check a purchase state
                 }
             }
 
             override fun onPurchasedProductsFetched(
-                    skuType: ProductType,
-                    purchases: MutableList<PurchaseInfo>
+                productType: ProductType,
+                purchases: MutableList<PurchaseInfo>
             ) {
                 /*
                 * This will be called even when no purchased products are returned by the API
                 * */
 
-                when (skuType) {
+                when (productType) {
                     ProductType.INAPP -> {
                         //TODO - non-consumable/consumable products
                     }
                     ProductType.SUBS -> {
                         //TODO - subscription products
                     }
+                    ProductType.COMBINED -> {
+                        //this will be triggered on activity start
+                        //the other two (INAPP and SUBS) will be triggered when the user actually buys a product
+                        //TODO - restore purchases
+                    }
                     else -> {
-                        Log.d("BillingConnector", "None of the above SkuType match")
+                        Log.d("BillingConnector", "None of the above ProductType match")
                     }
                 }
 
                 purchases.forEach {
-                    when (it.sku) {
-                        "non_consumable_id2" -> {
+                    when (it.product) {
+                        "non_consumable_id_2" -> {
                             //TODO - do something
                             Log.d("BillingConnector", "Purchased product fetched: $it")
                             Toast.makeText(
-                                    this@KotlinSampleActivity,
-                                    "Purchased product fetched: $it",
-                                    Toast.LENGTH_SHORT
+                                this@KotlinSampleActivity,
+                                "Purchased product fetched: $it",
+                                Toast.LENGTH_SHORT
                             ).show()
                         }
 
@@ -152,28 +158,28 @@ class KotlinSampleActivity : AppCompatActivity() {
             }
 
             override fun onProductsPurchased(purchases: MutableList<PurchaseInfo>) {
-                var sku: String
+                var product: String
                 var purchaseToken: String
 
                 for (purchaseInfo in purchases) {
-                    sku = purchaseInfo.sku
+                    product = purchaseInfo.product
                     purchaseToken = purchaseInfo.purchaseToken
 
-                    if (sku.equals("subscription_id3", ignoreCase = true)) {
+                    if (product.equals("subscription_id_3", ignoreCase = true)) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product purchased: $sku")
+                        Log.d("BillingConnector", "Product purchased: $product")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Product purchased: $sku",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Product purchased: $product",
+                            Toast.LENGTH_SHORT
                         ).show()
 
                         //TODO - do something
                         Log.d("BillingConnector", "Purchase token: $purchaseToken")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Purchase token: $purchaseToken",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Purchase token: $purchaseToken",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
 
@@ -196,14 +202,14 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * check and acknowledge all unacknowledged products at the startup
                  * */
 
-                when (purchase.sku) {
-                    "non_consumable_id2" -> {
+                when (purchase.product) {
+                    "non_consumable_id_2" -> {
                         //TODO - do something
-                        Log.d("BillingConnector", "Acknowledged: ${purchase.sku}")
+                        Log.d("BillingConnector", "Acknowledged: ${purchase.product}")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Acknowledged: ${purchase.sku}",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Acknowledged: ${purchase.product}",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
 
@@ -220,14 +226,14 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * without actually paying
                  * */
 
-                when (purchase.sku) {
-                    "consumable_id1" -> {
+                when (purchase.product) {
+                    "consumable_id_1" -> {
                         //TODO - do something
-                        Log.d("BillingConnector", "Consumed: ${purchase.sku}")
+                        Log.d("BillingConnector", "Consumed: ${purchase.product}")
                         Toast.makeText(
-                                this@KotlinSampleActivity,
-                                "Consumed: ${purchase.sku}",
-                                Toast.LENGTH_SHORT
+                            this@KotlinSampleActivity,
+                            "Consumed: ${purchase.product}",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
 
@@ -236,8 +242,8 @@ class KotlinSampleActivity : AppCompatActivity() {
             }
 
             override fun onBillingError(
-                    billingConnector: BillingConnector,
-                    response: BillingResponse
+                billingConnector: BillingConnector,
+                response: BillingResponse
             ) {
                 when (response.errorType) {
                     ErrorType.CLIENT_NOT_READY -> {
@@ -246,8 +252,8 @@ class KotlinSampleActivity : AppCompatActivity() {
                     ErrorType.CLIENT_DISCONNECTED -> {
                         //TODO - client has disconnected
                     }
-                    ErrorType.SKU_NOT_EXIST -> {
-                        //TODO - sku does not exist
+                    ErrorType.PRODUCT_NOT_EXIST -> {
+                        //TODO - product does not exist
                     }
                     ErrorType.CONSUME_ERROR -> {
                         //TODO - error during consumption
@@ -283,7 +289,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                         //TODO - error occurred while querying purchased products
                     }
                     ErrorType.BILLING_ERROR -> {
-                        //TODO - error occurred during initialization / querying sku details
+                        //TODO - error occurred during initialization / querying product details
                     }
                     ErrorType.USER_CANCELED -> {
                         //TODO - user pressed back or canceled a dialog
@@ -315,15 +321,15 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
 
                 Log.d(
-                        "BillingConnector", "Error type: ${response.errorType}" +
-                        " Response code: ${response.responseCode}" + " Message: ${response.debugMessage}"
+                    "BillingConnector", "Error type: ${response.errorType}" +
+                            " Response code: ${response.responseCode}" + " Message: ${response.debugMessage}"
                 )
 
                 Toast.makeText(
-                        this@KotlinSampleActivity,
-                        "Error type: ${response.errorType}" + " Response code: ${response.responseCode}"
-                                + " Message: ${response.debugMessage}",
-                        Toast.LENGTH_SHORT
+                    this@KotlinSampleActivity,
+                    "Error type: ${response.errorType}" + " Response code: ${response.responseCode}"
+                            + " Message: ${response.debugMessage}",
+                    Toast.LENGTH_SHORT
                 ).show()
             }
         })
@@ -334,6 +340,8 @@ class KotlinSampleActivity : AppCompatActivity() {
         purchaseConsumable = findViewById(R.id.purchase_consumable)
         purchaseNonConsumable = findViewById(R.id.purchase_non_consumable)
         purchaseSubscription = findViewById(R.id.purchase_subscription)
+        purchaseSubscriptionOfferOne = findViewById(R.id.purchase_subscription_offer_one)
+        purchaseSubscriptionOfferTwo = findViewById(R.id.purchase_subscription_offer_two)
         cancelSubscription = findViewById(R.id.cancel_subscription)
 
         //init exit app button
@@ -343,6 +351,8 @@ class KotlinSampleActivity : AppCompatActivity() {
         BounceView.addAnimTo(purchaseConsumable)
         BounceView.addAnimTo(purchaseNonConsumable)
         BounceView.addAnimTo(purchaseSubscription)
+        BounceView.addAnimTo(purchaseSubscriptionOfferOne)
+        BounceView.addAnimTo(purchaseSubscriptionOfferTwo)
         BounceView.addAnimTo(cancelSubscription)
         BounceView.addAnimTo(exitApp)
     }
@@ -350,20 +360,29 @@ class KotlinSampleActivity : AppCompatActivity() {
     private fun clickListeners() {
         //purchase an item
         purchaseConsumable.setOnClickListener {
-            billingConnector.purchase(this, "consumable_id1")
+            billingConnector.purchase(this, "consumable_id_1")
         }
         purchaseNonConsumable.setOnClickListener {
-            billingConnector.purchase(this, "non_consumable_id2")
+            billingConnector.purchase(this, "non_consumable_id_2")
         }
 
-        //purchase a subscription
+        //purchase a subscription without an offer (only a base plan)
         purchaseSubscription.setOnClickListener {
-            billingConnector.subscribe(this, "subscription_id3", 0)
+            billingConnector.subscribe(this, "subscription_id_1")
+        }
+
+        //purchase a subscription with multiple offers
+        //the offer index represents the different offers in the subscription (after Google Billing v5+)
+        purchaseSubscriptionOfferOne.setOnClickListener {
+            billingConnector.subscribe(this, "subscription_id_1", 0)
+        }
+        purchaseSubscriptionOfferTwo.setOnClickListener {
+            billingConnector.subscribe(this, "subscription_id_1", 1)
         }
 
         //cancel a subscription
         cancelSubscription.setOnClickListener {
-            billingConnector.unsubscribe(this, "subscription_id3")
+            billingConnector.unsubscribe(this, "subscription_id_3")
         }
 
         //exit app on button click
@@ -412,32 +431,35 @@ class KotlinSampleActivity : AppCompatActivity() {
         }
 
         /*
-         * public final PurchasedResult isPurchased(SkuInfo skuInfo)
+         * public final PurchasedResult isPurchased(ProductInfo productInfo)
          *
          * To synchronously check a purchase state
          * */
-        for (skuInfo in fetchedSkuInfoList) {
-            when (billingConnector.isPurchased(skuInfo)) {
+        for (productInfo in fetchedProductInfoList) {
+            when (billingConnector.isPurchased(productInfo)) {
                 PurchasedResult.YES -> {
                     //TODO - do something
-                    Log.d("BillingConnector", "The SKU: ${skuInfo.sku} is purchased")
+                    Log.d("BillingConnector", "The product: ${productInfo.product} is purchased")
                 }
                 PurchasedResult.NO -> {
                     //TODO - do something
-                    Log.d("BillingConnector", "The SKU: ${skuInfo.sku} is not purchased")
+                    Log.d(
+                        "BillingConnector",
+                        "The product: ${productInfo.product} is not purchased"
+                    )
                 }
                 PurchasedResult.CLIENT_NOT_READY -> {
                     //TODO - do something
                     Log.d(
-                            "BillingConnector",
-                            "Cannot check: ${skuInfo.sku} because client is not ready"
+                        "BillingConnector",
+                        "Cannot check: ${productInfo.product} because client is not ready"
                     )
                 }
                 PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET -> {
                     //TODO - do something
                     Log.d(
-                            "BillingConnector",
-                            "Cannot check: ${skuInfo.sku} because purchased products are not fetched yet"
+                        "BillingConnector",
+                        "Cannot check: ${productInfo.product} because purchased products are not fetched yet"
                     )
                 }
                 else -> {
@@ -465,25 +487,25 @@ class KotlinSampleActivity : AppCompatActivity() {
         }
 
         /*
-         * public final void purchase(Activity activity, String skuId)
+         * public final void purchase(Activity activity, String productId)
          *
          * To purchase a non-consumable/consumable product
          * */
-        billingConnector.purchase(this, "sku_id")
+        billingConnector.purchase(this, "product_id")
 
         /*
-         * public final void subscribe(Activity activity, String skuId)
+         * public final void subscribe(Activity activity, String productId)
          *
          * To purchase a subscription
          * */
-        billingConnector.subscribe(this, "sku_id", 0)
+        billingConnector.subscribe(this, "product_id")
 
         /*
-        * public final void unsubscribe(Activity activity, String skuId)
+        * public final void unsubscribe(Activity activity, String productId)
         *
         * To cancel a subscription
         * */
-        billingConnector.unsubscribe(this, "sku_id")
+        billingConnector.unsubscribe(this, "product_id")
     }
 
     override fun onDestroy() {
