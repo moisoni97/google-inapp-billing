@@ -43,7 +43,7 @@ public class JavaSampleActivity extends AppCompatActivity {
     private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
 
     //list for example purposes to demonstrate how to synchronously check a purchase state
-    private final List<ProductInfo> fetchedSkuInfoList = new ArrayList<>();
+    private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,18 +86,18 @@ public class JavaSampleActivity extends AppCompatActivity {
 
         billingConnector.setBillingEventListener(new BillingEventListener() {
             @Override
-            public void onProductsFetched(@NonNull List<ProductInfo> skuDetails) {
-                String sku;
+            public void onProductsFetched(@NonNull List<ProductInfo> productDetails) {
+                String product;
                 String price;
 
-                for (ProductInfo skuInfo : skuDetails) {
-                    sku = skuInfo.getSku();
-                    price = skuInfo.getPrice();
+                for (ProductInfo productInfo : productDetails) {
+                    product = productInfo.getProduct();
+                    price = productInfo.getPrice();
 
-                    if (sku.equalsIgnoreCase("consumable_id_1")) {
+                    if (product.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product fetched: " + sku);
-                        Toast.makeText(JavaSampleActivity.this, "Product fetched: " + sku, Toast.LENGTH_SHORT).show();
+                        Log.d("BillingConnector", "Product fetched: " + product);
+                        Toast.makeText(JavaSampleActivity.this, "Product fetched: " + product, Toast.LENGTH_SHORT).show();
 
                         //TODO - do something
                         Log.d("BillingConnector", "Product price: " + price);
@@ -106,7 +106,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                     //TODO - similarly check for other ids
 
-                    fetchedSkuInfoList.add(skuInfo); //check "usefulPublicMethods" to see how to synchronously check a purchase state
+                    fetchedProductInfoList.add(productInfo); //check "usefulPublicMethods" to see how to synchronously check a purchase state
                 }
             }
 
@@ -123,16 +123,21 @@ public class JavaSampleActivity extends AppCompatActivity {
                     case SUBS:
                         //TODO - subscription products
                         break;
+                    case COMBINED:
+                        //this will be triggered on activity start
+                        //the other two (INAPP and SUBS) will be triggered when the user actually buys a product
+                        //TODO - restore purchases
+                        break;
                 }
 
-                String sku;
+                String product;
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    sku = purchaseInfo.getSku();
+                    product = purchaseInfo.getProduct();
 
-                    if (sku.equalsIgnoreCase("consumable_id_1")) {
+                    if (product.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Purchased product fetched: " + sku);
-                        Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + sku, Toast.LENGTH_SHORT).show();
+                        Log.d("BillingConnector", "Purchased product fetched: " + product);
+                        Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + product, Toast.LENGTH_SHORT).show();
                     }
 
                     //TODO - similarly check for other ids
@@ -141,17 +146,17 @@ public class JavaSampleActivity extends AppCompatActivity {
 
             @Override
             public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
-                String sku;
+                String product;
                 String purchaseToken;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    sku = purchaseInfo.getSku();
+                    product = purchaseInfo.getProduct();
                     purchaseToken = purchaseInfo.getPurchaseToken();
 
-                    if (sku.equalsIgnoreCase("consumable_id_1")) {
+                    if (product.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
-                        Log.d("BillingConnector", "Product purchased: " + sku);
-                        Toast.makeText(JavaSampleActivity.this, "Product purchased: " + sku, Toast.LENGTH_SHORT).show();
+                        Log.d("BillingConnector", "Product purchased: " + product);
+                        Toast.makeText(JavaSampleActivity.this, "Product purchased: " + product, Toast.LENGTH_SHORT).show();
 
                         //TODO - do something
                         Log.d("BillingConnector", "Purchase token: " + purchaseToken);
@@ -178,12 +183,12 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * check and acknowledge all unacknowledged products at the startup
                  * */
 
-                String acknowledgedSku = purchase.getSku();
+                String acknowledgedProduct = purchase.getProduct();
 
-                if (acknowledgedSku.equalsIgnoreCase("consumable_id_1")) {
+                if (acknowledgedProduct.equalsIgnoreCase("consumable_id_1")) {
                     //TODO - do something
-                    Log.d("BillingConnector", "Acknowledged: " + acknowledgedSku);
-                    Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedSku, Toast.LENGTH_SHORT).show();
+                    Log.d("BillingConnector", "Acknowledged: " + acknowledgedProduct);
+                    Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedProduct, Toast.LENGTH_SHORT).show();
                 }
 
                 //TODO - similarly check for other ids
@@ -199,12 +204,12 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * without actually paying
                  * */
 
-                String consumedSku = purchase.getSku();
+                String consumedProduct = purchase.getProduct();
 
-                if (consumedSku.equalsIgnoreCase("consumable_id_1")) {
+                if (consumedProduct.equalsIgnoreCase("consumable_id_1")) {
                     //TODO - do something
-                    Log.d("BillingConnector", "Consumed: " + consumedSku);
-                    Toast.makeText(JavaSampleActivity.this, "Consumed: " + consumedSku, Toast.LENGTH_SHORT).show();
+                    Log.d("BillingConnector", "Consumed: " + consumedProduct);
+                    Toast.makeText(JavaSampleActivity.this, "Consumed: " + consumedProduct, Toast.LENGTH_SHORT).show();
                 }
 
                 //TODO - similarly check for other ids
@@ -219,8 +224,8 @@ public class JavaSampleActivity extends AppCompatActivity {
                     case CLIENT_DISCONNECTED:
                         //TODO - client has disconnected
                         break;
-                    case SKU_NOT_EXIST:
-                        //TODO - sku does not exist
+                    case PRODUCT_NOT_EXIST:
+                        //TODO - product does not exist
                         break;
                     case CONSUME_ERROR:
                         //TODO - error during consumption
@@ -256,7 +261,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - error occurred while querying purchased products
                         break;
                     case BILLING_ERROR:
-                        //TODO - error occurred during initialization / querying sku details
+                        //TODO - error occurred during initialization / querying product details
                         break;
                     case USER_CANCELED:
                         //TODO - user pressed back or canceled a dialog
@@ -316,18 +321,17 @@ public class JavaSampleActivity extends AppCompatActivity {
     }
 
     private void clickListeners() {
-
         //purchase an item
         purchaseConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "consumable_id_1"));
         purchaseNonConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "non_consumable_id_2"));
 
-        //purchase a subscription
-        purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 0));
+        //purchase a subscription without an offer (only a base plan)
+        purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1"));
 
-        //purchase a subscription
-        //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
+        //purchase a subscription with multiple offers
+        //the offer index represents the different offers in the subscription (after Google Billing v5+)
         purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 0));
-        purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 1));
+        purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 1));
 
         //cancel a subscription
         cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id_1"));
@@ -369,23 +373,23 @@ public class JavaSampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public final PurchasedResult isPurchased(SkuInfo skuInfo)
+         * public final PurchasedResult isPurchased(ProductInfo productInfo)
          *
          * To synchronously check a purchase state
          * */
-        for (ProductInfo skuInfo : fetchedSkuInfoList) {
-            if (billingConnector.isPurchased(skuInfo) == PurchasedResult.YES) {
+        for (ProductInfo productInfo : fetchedProductInfoList) {
+            if (billingConnector.isPurchased(productInfo) == PurchasedResult.YES) {
                 //TODO - do something
-                Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is purchased");
-            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.NO) {
+                Log.d("BillingConnector", "The product: " + productInfo.getProduct() + " is purchased");
+            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.NO) {
                 //TODO - do something
-                Log.d("BillingConnector", "The SKU: " + skuInfo.getSku() + " is not purchased");
-            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.CLIENT_NOT_READY) {
+                Log.d("BillingConnector", "The product: " + productInfo.getProduct() + " is not purchased");
+            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.CLIENT_NOT_READY) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check: " + skuInfo.getSku() + " because client is not ready");
-            } else if (billingConnector.isPurchased(skuInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
+                Log.d("BillingConnector", "Cannot check: " + productInfo.getProduct() + " because client is not ready");
+            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
                 //TODO - do something
-                Log.d("BillingConnector", "Cannot check: " + skuInfo.getSku() + " because purchased products are not fetched yet");
+                Log.d("BillingConnector", "Cannot check: " + productInfo.getProduct() + " because purchased products are not fetched yet");
             }
         }
 
@@ -408,25 +412,25 @@ public class JavaSampleActivity extends AppCompatActivity {
         }
 
         /*
-         * public final void purchase(Activity activity, String skuId, int offerIndex)
+         * public final void purchase(Activity activity, String productId, int offerIndex)
          *
          * To purchase a non-consumable/consumable product
          * */
-        billingConnector.purchase(JavaSampleActivity.this, "sku_id");
+        billingConnector.purchase(JavaSampleActivity.this, "product_id");
 
         /*
-         * public final void subscribe(Activity activity, String skuId, int offerIndex)
+         * public final void subscribe(Activity activity, String productId, int offerIndex)
          *
          * To purchase a subscription
          * */
-        billingConnector.subscribe(JavaSampleActivity.this, "sku_id", 0);
+        billingConnector.subscribe(JavaSampleActivity.this, "product_id");
 
         /*
-         * public final void unsubscribe(Activity activity, String skuId)
+         * public final void unsubscribe(Activity activity, String productId)
          *
          * To cancel a subscription
          * */
-        billingConnector.unsubscribe(JavaSampleActivity.this, "sku_id");
+        billingConnector.unsubscribe(JavaSampleActivity.this, "product_id");
     }
 
     @Override

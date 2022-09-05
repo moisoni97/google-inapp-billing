@@ -10,10 +10,10 @@ import games.moisoni.google_iab.enums.SkuProductType;
 public class PurchaseInfo {
 
     private final SkuProductType skuProductType;
-    private final ProductInfo skuInfo;
+    private final ProductInfo productInfo;
     private final Purchase purchase;
 
-    private final String sku;
+    private final String product;
 
     private final AccountIdentifiers accountIdentifiers;
     private final List<String> products;
@@ -33,11 +33,11 @@ public class PurchaseInfo {
     private final boolean isAcknowledged;
     private final boolean isAutoRenewing;
 
-    public PurchaseInfo(ProductInfo skuInfo, Purchase purchase) {
-        this.skuInfo = skuInfo;
+    public PurchaseInfo(ProductInfo productInfo, Purchase purchase) {
+        this.productInfo = productInfo;
         this.purchase = purchase;
-        this.sku = skuInfo.getSku();
-        this.skuProductType = skuInfo.getSkuProductType();
+        this.product = productInfo.getProduct();
+        this.skuProductType = productInfo.getSkuProductType();
         this.accountIdentifiers = purchase.getAccountIdentifiers();
         this.products = purchase.getProducts();
         this.orderId = purchase.getOrderId();
@@ -57,16 +57,16 @@ public class PurchaseInfo {
         return skuProductType;
     }
 
-    public ProductInfo getSkuInfo() {
-        return skuInfo;
+    public ProductInfo getProductInfo() {
+        return productInfo;
     }
 
     public Purchase getPurchase() {
         return purchase;
     }
 
-    public String getSku() {
-        return sku;
+    public String getProduct() {
+        return product;
     }
 
     public AccountIdentifiers getAccountIdentifiers() {
