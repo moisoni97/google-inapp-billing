@@ -3,7 +3,7 @@ package games.moisoni.google_iab.enums;
 public enum ErrorType {
     CLIENT_NOT_READY,
     CLIENT_DISCONNECTED,
-    SKU_NOT_EXIST,
+    PRODUCT_NOT_EXIST,
     CONSUME_ERROR,
     CONSUME_WARNING,
     ACKNOWLEDGE_ERROR,
@@ -17,5 +17,5 @@ public enum ErrorType {
     DEVELOPER_ERROR,
     ERROR,
     ITEM_ALREADY_OWNED,
-    ITEM_NOT_OWNED,
+    ITEM_NOT_OWNED
 }
