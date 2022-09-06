@@ -458,14 +458,14 @@ public class BillingConnector {
                         (billingResult, purchases) -> {
                             if (billingResult.getResponseCode() == OK) {
                                 if (purchases.isEmpty()) {
-                                    Log("Query IN-APP Purchases: the list is empty");
+                                    Log("Query SUBS Purchases: the list is empty");
                                 } else {
-                                    Log("Query IN-APP Purchases: data found and progress");
+                                    Log("Query SUBS Purchases: data found and progress");
                                 }
 
                                 processPurchases(ProductType.SUBS, purchases, true);
                             } else {
-                                Log("Query IN-APP Purchases: failed");
+                                Log("Query SUBS Purchases: failed");
                             }
                         }
                 );
