@@ -22,6 +22,12 @@ import games.moisoni.google_iab.models.PurchaseInfo;
  * Below you'll see a simple "remove ads button" scenario
  * <p>
  * Following this logic, you'll be able to integrate any one-time product purchase or subscriptions
+ * <p>
+ * We have a boolean variable "userPrefersAdFree" that will be `true` only when the API successfully acknowledged the purchase
+ * The state of the variable will be saved using SharedPreferences so we can retrieve it in other activities/fragments
+ * Before showing the ads, we'll always check the value of the variable and proceed only if its value is set to `false`
+ * <p>
+ * The logic is simple and should be self-explanatory
  */
 public class RemoveAdsExampleActivity extends AppCompatActivity {
 
@@ -118,6 +124,7 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
                 switch (response.getErrorType()) {
                     case ACKNOWLEDGE_WARNING:
+                        //this response will be triggered when the purchase is still PENDING
                         Toast.makeText(RemoveAdsExampleActivity.this, "The transaction is still pending. Please come back later to receive the purchase!", Toast.LENGTH_SHORT).show();
                         break;
                     case BILLING_UNAVAILABLE:

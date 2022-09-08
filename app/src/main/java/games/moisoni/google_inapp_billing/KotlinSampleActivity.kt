@@ -496,9 +496,16 @@ class KotlinSampleActivity : AppCompatActivity() {
         /*
          * public final void subscribe(Activity activity, String productId)
          *
-         * To purchase a subscription
+         * To purchase a subscription with a base plan
          * */
         billingConnector.subscribe(this, "product_id")
+
+        /*
+         * public final void subscribe(Activity activity, String productId, int selectedOfferIndex)
+         *
+         * To purchase a subscription with multiple offers
+         * */
+        billingConnector.subscribe(this, "product_id", 1)
 
         /*
         * public final void unsubscribe(Activity activity, String productId)
