@@ -1,5 +1,20 @@
 package games.moisoni.google_iab;
 
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_TIMEOUT;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
+import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
+import static com.android.billingclient.api.BillingClient.ProductType.INAPP;
+import static com.android.billingclient.api.BillingClient.ProductType.SUBS;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -20,7 +35,7 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
-import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,28 +43,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import games.moisoni.google_iab.enums.ErrorType;
+import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.PurchasedResult;
 import games.moisoni.google_iab.enums.SkuProductType;
-import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.SupportState;
 import games.moisoni.google_iab.models.BillingResponse;
-import games.moisoni.google_iab.models.PurchaseInfo;
 import games.moisoni.google_iab.models.ProductInfo;
-
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_TIMEOUT;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
-import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
-import static com.android.billingclient.api.BillingClient.ProductType.INAPP;
-import static com.android.billingclient.api.BillingClient.ProductType.SUBS;
+import games.moisoni.google_iab.models.PurchaseInfo;
 
 public class BillingConnector {
 
