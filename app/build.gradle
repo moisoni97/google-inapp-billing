@@ -11,7 +11,7 @@ android {
         applicationId "games.moisoni.google_inapp_billing"
         minSdkVersion 16
         targetSdkVersion 33
-        versionCode 9
+        versionCode 10
         versionName "2.0.0"
 
         multiDexEnabled true

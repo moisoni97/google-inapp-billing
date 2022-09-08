@@ -14,7 +14,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="DataExtractionRules">
-
         <activity
             android:name=".JavaSampleActivity"
             android:exported="true"
@@ -25,9 +24,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity
             android:name=".KotlinSampleActivity"
             android:theme="@style/SplashTheme" />
+        <activity
+            android:name=".RemoveAdsExampleActivity"
+            android:theme="@style/SplashTheme" />
     </application>
+
 </manifest>
