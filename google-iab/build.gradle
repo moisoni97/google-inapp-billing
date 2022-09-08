@@ -50,6 +50,9 @@ afterEvaluate {
         publications {
             release(MavenPublication) {
                 from components.release
+                groupId = 'com.github.moisoni97'
+                artifactId = 'google-inapp-billing'
+                version = '1.1.0'
             }
         }
     }
