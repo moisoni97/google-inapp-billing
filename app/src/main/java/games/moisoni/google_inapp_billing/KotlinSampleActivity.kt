@@ -89,7 +89,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                 for (productInfo in productDetails) {
                     product = productInfo.product
-                    price = productInfo.price
+                    price = productInfo.oneTimePurchaseOfferPrice
 
                     if (product.equals("consumable_id_1", ignoreCase = true)) {
                         //TODO - do something
