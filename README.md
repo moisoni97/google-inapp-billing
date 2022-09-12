@@ -267,3 +267,11 @@ The sample app provides an example for `Kotlin` users.
 Go through the sample app to see a more advanced integration of the library. 
 
 It also shows how to implement some `useful public methods`.
+
+# Credits
+
+This is an open-source project meant to help developers to fastly and easily implement the Google Billing API.
+
+The library uses a code base from a fork created by [@Mustafa Rasheed](https://github.com/MRZ07) and was heavily modified by me and later by other contributors.
+
+
