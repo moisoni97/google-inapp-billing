@@ -52,7 +52,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.moisoni97'
                 artifactId = 'google-inapp-billing'
-                version = '1.1.0'
+                version = '1.1.1'
             }
         }
     }
@@ -65,7 +65,7 @@ dependencies {
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
 
-    implementation 'androidx.appcompat:appcompat:1.5.0'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'com.google.guava:guava:31.1-android'
 
