@@ -12,7 +12,6 @@ public class ProductInfo {
     private final ProductDetails productDetails;
 
     private final String product;
-    private final String price;
     private final String description;
     private final String title;
     private final String type;
@@ -20,12 +19,10 @@ public class ProductInfo {
     private final ProductDetails.OneTimePurchaseOfferDetails oneTimePurchaseOfferDetails;
     private final List<ProductDetails.SubscriptionOfferDetails> subscriptionOfferDetails;
 
-
     public ProductInfo(SkuProductType skuProductType, ProductDetails productDetails) {
         this.skuProductType = skuProductType;
         this.productDetails = productDetails;
         this.product = productDetails.getProductId();
-        this.price = productDetails.getDescription();
         this.description = productDetails.getDescription();
         this.title = productDetails.getTitle();
         this.type = productDetails.getProductType();
@@ -46,10 +43,6 @@ public class ProductInfo {
         return product;
     }
 
-    public String getPrice() {
-        return price;
-    }
-
     public String getDescription() {
         return description;
     }
@@ -64,6 +57,14 @@ public class ProductInfo {
 
     public String getName() {
         return name;
+    }
+
+    public String getOneTimePurchaseOfferPrice() {
+        return getOneTimePurchaseOfferDetails().getFormattedPrice();
+    }
+
+    public String getSubscriptionOfferPrice(int selectedOfferIndex, int selectedPricingPhaseIndex) {
+        return getSubscriptionOfferDetails().get(selectedOfferIndex).getPricingPhases().getPricingPhaseList().get(selectedPricingPhaseIndex).getFormattedPrice();
     }
 
     public ProductDetails.OneTimePurchaseOfferDetails getOneTimePurchaseOfferDetails() {
