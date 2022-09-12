@@ -92,7 +92,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                 for (ProductInfo productInfo : productDetails) {
                     product = productInfo.getProduct();
-                    price = productInfo.getPrice();
+                    price = productInfo.getOneTimePurchaseOfferPrice();
 
                     if (product.equalsIgnoreCase("consumable_id_1")) {
                         //TODO - do something
