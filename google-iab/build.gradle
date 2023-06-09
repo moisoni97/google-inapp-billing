@@ -69,5 +69,5 @@ dependencies {
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'com.google.guava:guava:31.1-android'
 
-    implementation 'com.android.billingclient:billing:5.0.0'
+    implementation 'com.android.billingclient:billing:6.0.0'
 }
