@@ -41,9 +41,9 @@ import static com.android.billingclient.api.BillingClient.BillingResponseCode.ER
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.NETWORK_ERROR;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_TIMEOUT;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
 import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
@@ -145,9 +145,10 @@ public class BillingConnector {
                                     new BillingResponse(ErrorType.ITEM_NOT_OWNED, billingResult)));
                             break;
                         case SERVICE_DISCONNECTED:
-                        case SERVICE_TIMEOUT:
                             Log("Initialization error: service disconnected/timeout. Trying to reconnect...");
                             break;
+                        case NETWORK_ERROR:
+                            Log("Initialization error: service network error. Trying to reconnect...");
                         default:
                             Log("Initialization error: " + new BillingResponse(ErrorType.BILLING_ERROR, billingResult));
                             break;
@@ -664,15 +665,27 @@ public class BillingConnector {
     }
 
     /**
-     * Called to purchase a subscription
+     * Called to purchase a subscription with offers
      * <p>
      * To avoid confusion while trying to purchase a subscription
      * Does the same thing as purchase() method
      * <p>
-     * If there is only one base package, offerIndex = 0
+     * For subscription with only one base package, use subscribe(activity, productId) method or selectedOfferIndex = 0
      */
-    public final void subscribe(Activity activity, String productId, int offerIndex) {
-        purchase(activity, productId, offerIndex);
+    public final void subscribe(Activity activity, String productId, int selectedOfferIndex) {
+        purchase(activity, productId, selectedOfferIndex);
+    }
+
+    /**
+     * Called to purchase a simple subscription
+     * <p>
+     * To avoid confusion while trying to purchase a subscription
+     * Does the same thing as purchase() method
+     * <p>
+     * For subscription with multiple offers, use subscribe(activity, productId, selectedOfferIndex) method
+     */
+    public final void subscribe(Activity activity, String productId) {
+        purchase(activity, productId);
     }
 
     /**
