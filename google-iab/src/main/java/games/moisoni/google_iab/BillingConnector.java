@@ -1,5 +1,20 @@
 package games.moisoni.google_iab;
 
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.NETWORK_ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
+import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
+import static com.android.billingclient.api.BillingClient.ProductType.INAPP;
+import static com.android.billingclient.api.BillingClient.ProductType.SUBS;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -20,6 +35,7 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,28 +43,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import games.moisoni.google_iab.enums.ErrorType;
+import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.PurchasedResult;
 import games.moisoni.google_iab.enums.SkuProductType;
-import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.SupportState;
 import games.moisoni.google_iab.models.BillingResponse;
-import games.moisoni.google_iab.models.PurchaseInfo;
 import games.moisoni.google_iab.models.ProductInfo;
-
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.NETWORK_ERROR;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
-import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
-import static com.android.billingclient.api.BillingClient.ProductType.INAPP;
-import static com.android.billingclient.api.BillingClient.ProductType.SUBS;
+import games.moisoni.google_iab.models.PurchaseInfo;
 
 public class BillingConnector {
 
@@ -68,9 +69,9 @@ public class BillingConnector {
     private List<String> nonConsumableIds;
     private List<String> subscriptionIds;
 
-    List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
+    private final List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
 
-    private final List<ProductInfo> fetchedSkuInfoList = new ArrayList<>();
+    private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
 
     private boolean shouldAutoAcknowledge = false;
@@ -149,6 +150,7 @@ public class BillingConnector {
                             break;
                         case NETWORK_ERROR:
                             Log("Initialization error: service network error. Trying to reconnect...");
+                            break;
                         default:
                             Log("Initialization error: " + new BillingResponse(ErrorType.BILLING_ERROR, billingResult));
                             break;
@@ -224,21 +226,21 @@ public class BillingConnector {
             Log("Billing client is not ready yet");
         }
 
-        return isConnected && billingClient.isReady() && !fetchedSkuInfoList.isEmpty();
+        return isConnected && billingClient.isReady() && !fetchedProductInfoList.isEmpty();
     }
 
     /**
-     * Returns a boolean state of the SKU
+     * Returns a boolean state of the product
      *
-     * @param productId - is the SKU id that has to be checked
+     * @param productId - is the product id that has to be checked
      */
-    private boolean checkSkuBeforeInteraction(String productId) {
+    private boolean checkProductBeforeInteraction(String productId) {
         if (!isReady()) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
                     "Client is not ready yet", defaultResponseCode)));
-        } else if (productId != null && fetchedSkuInfoList.stream().noneMatch(it -> it.getProduct().equals(productId))) {
+        } else if (productId != null && fetchedProductInfoList.stream().noneMatch(it -> it.getProduct().equals(productId))) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
-                    "The SKU id: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
+                    "The product id: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
         } else return isReady();
 
         return false;
@@ -256,24 +258,24 @@ public class BillingConnector {
         if (consumableIds == null || consumableIds.isEmpty()) {
             consumableIds = null;
         } else {
-            for (String item : consumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(INAPP).build());
+            for (String id : consumableIds) {
+                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
             }
         }
 
         if (nonConsumableIds == null || nonConsumableIds.isEmpty()) {
             nonConsumableIds = null;
         } else {
-            for (String item : nonConsumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(INAPP).build());
+            for (String id : nonConsumableIds) {
+                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
             }
         }
 
         if (subscriptionIds == null || subscriptionIds.isEmpty()) {
             subscriptionIds = null;
         } else {
-            for (String item : subscriptionIds) {
-                productSubsList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(item).setProductType(SUBS).build());
+            for (String id : subscriptionIds) {
+                productSubsList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(SUBS).build());
             }
         }
 
@@ -285,11 +287,11 @@ public class BillingConnector {
             throw new IllegalArgumentException("At least one list of consumables, non-consumables or subscriptions is needed");
         }
 
-        //check for duplicates SKU ids
+        //check for duplicates product ids
         int allIdsSize = allProductList.size();
         int allIdsSizeDistinct = (int) allProductList.stream().distinct().count();
         if (allIdsSize != allIdsSizeDistinct) {
-            throw new IllegalArgumentException("The SKU id must appear only once in a list. Also, it must not be in different lists");
+            throw new IllegalArgumentException("The product id must appear only once in a list. Also, it must not be in different lists");
         }
 
         Log("Billing service: connecting...");
@@ -315,14 +317,14 @@ public class BillingConnector {
                             isConnected = true;
                             Log("Billing service: connected");
 
-                            //query consumable and non-consumable SKU details
+                            //query consumable and non-consumable product details
                             if (!productInAppList.isEmpty()) {
-                                querySkuDetails(INAPP, productInAppList);
+                                queryProductDetails(INAPP, productInAppList);
                             }
 
-                            //query subscription SKU details
+                            //query subscription product details
                             if (subscriptionIds != null) {
-                                querySkuDetails(SUBS, productSubsList);
+                                queryProductDetails(SUBS, productSubsList);
                             }
                             break;
                         case BILLING_UNAVAILABLE:
@@ -353,61 +355,58 @@ public class BillingConnector {
     /**
      * Fires a query in Play Console to show products available to purchase
      */
-    private void querySkuDetails(String skuType, List<QueryProductDetailsParams.Product> productList) {
-        QueryProductDetailsParams skuDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(productList).build();
+    private void queryProductDetails(String productType, List<QueryProductDetailsParams.Product> productList) {
+        QueryProductDetailsParams productDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(productList).build();
 
-        billingClient.queryProductDetailsAsync(skuDetailsParams, (billingResult, skuDetailsList) -> {
+        billingClient.queryProductDetailsAsync(productDetailsParams, (billingResult, productDetailsList) -> {
             if (billingResult.getResponseCode() == OK) {
-                if (skuDetailsList != null && skuDetailsList.isEmpty()) {
-                    Log("Query SKU Details: data not found. Make sure SKU ids are configured on Play Console");
+                if (productDetailsList.isEmpty()) {
+                    Log("Query Product Details: data not found. Make sure product ids are configured on Play Console");
 
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
-                            "No SKU found", defaultResponseCode)));
+                            "No product found", defaultResponseCode)));
                 } else {
-                    Log("Query SKU Details: data found");
+                    Log("Query Product Details: data found");
 
-                    if (skuDetailsList != null) {
-                        List<ProductInfo> fetchedSkuInfo = skuDetailsList.stream().map(this::generateSkuInfo).collect(Collectors.toList());
-                        fetchedSkuInfoList.addAll(fetchedSkuInfo);
+                    List<ProductInfo> fetchedProductInfo = productDetailsList.stream().map(this::generateProductInfo).collect(Collectors.toList());
+                    fetchedProductInfoList.addAll(fetchedProductInfo);
 
-                        switch (skuType) {
-                            case INAPP:
-                            case SUBS:
-                                findUiHandler().post(() -> billingEventListener.onProductsFetched(fetchedSkuInfo));
-                                break;
-                            default:
-                                throw new IllegalStateException("SKU type is not implemented");
-                        }
-
-                        List<String> fetchedSkuIds = fetchedSkuInfo.stream().map(ProductInfo::getProduct).collect(Collectors.toList());
-                        boolean isFetched = fetchedSkuIds.stream().anyMatch(productList::contains);
-
-                        if (isFetched) {
-                            fetchPurchasedProducts();
-                        }
-
-                    } else {
-                        Log("Query SKU Details: SKU details list is null");
+                    switch (productType) {
+                        case INAPP:
+                        case SUBS:
+                            findUiHandler().post(() -> billingEventListener.onProductsFetched(fetchedProductInfo));
+                            break;
+                        default:
+                            throw new IllegalStateException("Product type is not implemented");
                     }
+
+                    List<String> fetchedProductIds = fetchedProductInfo.stream().map(ProductInfo::getProduct).collect(Collectors.toList());
+                    List<String> productListIds = productList.stream().map(QueryProductDetailsParams.Product::zza).collect(Collectors.toList()); //according to the documentation "zza" is the product id
+                    boolean isFetched = fetchedProductIds.stream().anyMatch(productListIds::contains);
+
+                    if (isFetched) {
+                        fetchPurchasedProducts();
+                    }
+
                 }
             } else {
-                Log("Query SKU Details: failed");
+                Log("Query Product Details: failed");
                 findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
             }
         });
     }
 
     /**
-     * Returns a new SkuInfo object containing the SKU type and SKU details
+     * Returns a new ProductInfo object containing the product type and product details
      *
      * @param productDetails - is the object provided by the billing client API
      */
-    private ProductInfo generateSkuInfo(ProductDetails productDetails) {
+    private ProductInfo generateProductInfo(ProductDetails productDetails) {
         SkuProductType skuProductType;
 
         switch (productDetails.getProductType()) {
             case INAPP:
-                boolean consumable = isSkuIdConsumable(productDetails.getProductId());
+                boolean consumable = isProductIdConsumable(productDetails.getProductId());
                 if (consumable) {
                     skuProductType = SkuProductType.CONSUMABLE;
                 } else {
@@ -418,13 +417,13 @@ public class BillingConnector {
                 skuProductType = SkuProductType.SUBSCRIPTION;
                 break;
             default:
-                throw new IllegalStateException("SKU type is not implemented correctly");
+                throw new IllegalStateException("Product type is not implemented correctly");
         }
 
         return new ProductInfo(skuProductType, productDetails);
     }
 
-    private boolean isSkuIdConsumable(String productId) {
+    private boolean isProductIdConsumable(String productId) {
         if (consumableIds == null) {
             return false;
         }
@@ -461,14 +460,14 @@ public class BillingConnector {
                         (billingResult, purchases) -> {
                             if (billingResult.getResponseCode() == OK) {
                                 if (purchases.isEmpty()) {
-                                    Log("Query IN-APP Purchases: the list is empty");
+                                    Log("Query SUBS Purchases: the list is empty");
                                 } else {
-                                    Log("Query IN-APP Purchases: data found and progress");
+                                    Log("Query SUBS Purchases: data found and progress");
                                 }
 
                                 processPurchases(ProductType.SUBS, purchases, true);
                             } else {
-                                Log("Query IN-APP Purchases: failed");
+                                Log("Query SUBS Purchases: failed");
                             }
                         }
                 );
@@ -503,25 +502,25 @@ public class BillingConnector {
     /**
      * Checks purchases signature for more security
      */
-    private void processPurchases(ProductType skuType, List<Purchase> allPurchases, boolean purchasedProductsFetched) {
+    private void processPurchases(ProductType productType, List<Purchase> allPurchases, boolean purchasedProductsFetched) {
         List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
 
         //create a list with signature valid purchases
         List<Purchase> validPurchases = allPurchases.stream().filter(this::isPurchaseSignatureValid).collect(Collectors.toList());
         for (Purchase purchase : validPurchases) {
 
-            //query all SKUs as a list
-            List<String> purchasesSkus = purchase.getSkus();
+            //query all products as a list
+            List<String> purchasesProducts = purchase.getProducts();
 
-            //loop through all SKUs and progress for each SKU individually
-            for (int i = 0; i < purchasesSkus.size(); i++) {
-                String purchaseSku = purchasesSkus.get(i);
+            //loop through all products and progress for each product individually
+            for (int i = 0; i < purchasesProducts.size(); i++) {
+                String purchaseProduct = purchasesProducts.get(i);
 
-                Optional<ProductInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getProduct().equals(purchaseSku)).findFirst();
-                if (skuInfo.isPresent()) {
-                    ProductDetails skuDetails = skuInfo.get().getProductDetails();
+                Optional<ProductInfo> productInfo = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(purchaseProduct)).findFirst();
+                if (productInfo.isPresent()) {
+                    ProductDetails productDetails = productInfo.get().getProductDetails();
 
-                    PurchaseInfo purchaseInfo = new PurchaseInfo(generateSkuInfo(skuDetails), purchase);
+                    PurchaseInfo purchaseInfo = new PurchaseInfo(generateProductInfo(productDetails), purchase);
                     signatureValidPurchases.add(purchaseInfo);
 
                 }
@@ -530,7 +529,7 @@ public class BillingConnector {
 
         if (purchasedProductsFetched) {
             fetchedPurchasedProducts = true;
-            findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(skuType, signatureValidPurchases));
+            findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(productType, signatureValidPurchases));
         } else {
             findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
         }
@@ -543,8 +542,8 @@ public class BillingConnector {
             }
 
             if (shouldAutoAcknowledge) {
-                boolean isSkuConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
-                if (!isSkuConsumable) {
+                boolean isProductConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
+                if (!isProductConsumable) {
                     acknowledgePurchase(purchaseInfo);
                 }
             }
@@ -558,7 +557,7 @@ public class BillingConnector {
      * They have to be consumed within 3 days otherwise Google will refund the products
      */
     public void consumePurchase(PurchaseInfo purchaseInfo) {
-        if (checkSkuBeforeInteraction(purchaseInfo.getProduct())) {
+        if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
                     ConsumeParams consumeParams = ConsumeParams.newBuilder()
@@ -592,7 +591,7 @@ public class BillingConnector {
      * This will avoid refunding for these products to users by Google
      */
     public void acknowledgePurchase(PurchaseInfo purchaseInfo) {
-        if (checkSkuBeforeInteraction(purchaseInfo.getProduct())) {
+        if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
             switch (purchaseInfo.getSkuProductType()) {
                 case NON_CONSUMABLE:
                 case SUBSCRIPTION:
@@ -634,32 +633,39 @@ public class BillingConnector {
     /**
      * Called to purchase a non-consumable/consumable product
      * <p>
-     * The offset Index represents the different offers in the subscription.
+     * The offer index represents the different offers in the subscription.
      */
-    private void purchase(Activity activity, String productId, int offerIndex) {
-        if (checkSkuBeforeInteraction(productId)) {
-            Optional<ProductInfo> skuInfo = fetchedSkuInfoList.stream().filter(it -> it.getProduct().equals(productId)).findFirst();
-            if (skuInfo.isPresent()) {
-                String offerToken = "";
-                ProductDetails productDetails = skuInfo.get().getProductDetails();
+    private void purchase(Activity activity, String productId, int selectedOfferIndex) {
+        if (checkProductBeforeInteraction(productId)) {
+            Optional<ProductInfo> productInfo = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(productId)).findFirst();
+            if (productInfo.isPresent()) {
+                ProductDetails productDetails = productInfo.get().getProductDetails();
+                ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
-                //The offset Index represents the different offers in the subscription. (after Google Billing v5+)
-                if (productDetails.getProductType() == SUBS) {
-                    offerToken = productDetails
-                            .getSubscriptionOfferDetails()
-                            .get(offerIndex)
-                            .getOfferToken();
+                if (productDetails.getProductType().equals(SUBS) && productDetails.getSubscriptionOfferDetails() != null) {
+                    //the offer index represents the different offers in the subscription
+                    //offer index is only available for subscriptions starting with Google Billing v5+
+                    productDetailsParamsList = ImmutableList.of(
+                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                    .setProductDetails(productDetails)
+                                    .setOfferToken(productDetails.getSubscriptionOfferDetails().get(selectedOfferIndex).getOfferToken())
+                                    .build()
+                    );
+                } else {
+                    productDetailsParamsList = ImmutableList.of(
+                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                    .setProductDetails(productDetails)
+                                    .build()
+                    );
                 }
-
-                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList =
-                        List.of(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(productDetails).setOfferToken(offerToken).build());
 
                 BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
                         .setProductDetailsParamsList(productDetailsParamsList)
                         .build();
+
                 billingClient.launchBillingFlow(activity, billingFlowParams);
             } else {
-                Log("Billing client can not launch billing flow because SKU details are missing");
+                Log("Billing client can not launch billing flow because product details are missing");
             }
         }
     }
@@ -711,8 +717,8 @@ public class BillingConnector {
     /**
      * Checks purchase state synchronously
      */
-    public final PurchasedResult isPurchased(ProductInfo skuInfo) {
-        return checkPurchased(skuInfo.getProduct());
+    public final PurchasedResult isPurchased(ProductInfo productInfo) {
+        return checkPurchased(productInfo.getProduct());
     }
 
     private PurchasedResult checkPurchased(String productId) {
@@ -722,7 +728,7 @@ public class BillingConnector {
             return PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET;
         } else {
             for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                if (purchaseInfo.getProductInfo().equals(productId)) {
+                if (purchaseInfo.getProduct().equals(productId)) {
                     return PurchasedResult.YES;
                 }
             }
