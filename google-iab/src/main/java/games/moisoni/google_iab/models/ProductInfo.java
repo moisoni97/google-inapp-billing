@@ -2,7 +2,9 @@ package games.moisoni.google_iab.models;
 
 import com.android.billingclient.api.ProductDetails;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import games.moisoni.google_iab.enums.SkuProductType;
 
@@ -10,14 +12,15 @@ public class ProductInfo {
 
     private final SkuProductType skuProductType;
     private final ProductDetails productDetails;
-
     private final String product;
     private final String description;
     private final String title;
     private final String type;
     private final String name;
-    private final ProductInfoDetails.OneTimePurchaseOfferDetails oneTimePurchaseOfferDetails;
-    private final List<ProductDetails.SubscriptionOfferDetails> subscriptionOfferDetails;
+    private final String oneTimePurchaseOfferFormattedPrice;
+    private final long oneTimePurchaseOfferPriceAmountMicros;
+    private final String oneTimePurchaseOfferPriceCurrencyCode;
+    private final List<SubscriptionOfferDetails> subscriptionOfferDetails;
 
     public ProductInfo(SkuProductType skuProductType, ProductDetails productDetails) {
         this.skuProductType = skuProductType;
@@ -27,11 +30,19 @@ public class ProductInfo {
         this.title = productDetails.getTitle();
         this.type = productDetails.getProductType();
         this.name = productDetails.getName();
-        this.oneTimePurchaseOfferDetails = new ProductInfoDetails.OneTimePurchaseOfferDetails(
-                productDetails.getOneTimePurchaseOfferDetails().getFormattedPrice(),
-                productDetails.getOneTimePurchaseOfferDetails().getPriceAmountMicros(),
-                productDetails.getOneTimePurchaseOfferDetails().getPriceCurrencyCode());
-        this.subscriptionOfferDetails = productDetails.getSubscriptionOfferDetails();
+        this.oneTimePurchaseOfferFormattedPrice = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getFormattedPrice).orElse(null);
+        this.oneTimePurchaseOfferPriceAmountMicros = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getPriceAmountMicros).orElse(0L);
+        this.oneTimePurchaseOfferPriceCurrencyCode = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getPriceCurrencyCode).orElse(null);
+
+        List<ProductDetails.SubscriptionOfferDetails> offerDetailsList = productDetails.getSubscriptionOfferDetails();
+        this.subscriptionOfferDetails = new ArrayList<>();
+
+        if (offerDetailsList != null) {
+            for (ProductDetails.SubscriptionOfferDetails offerDetails : offerDetailsList) {
+                SubscriptionOfferDetails newOfferDetails = createSubscriptionOfferDetails(offerDetails);
+                this.subscriptionOfferDetails.add(newOfferDetails);
+            }
+        }
     }
 
     public SkuProductType getSkuProductType() {
@@ -62,19 +73,23 @@ public class ProductInfo {
         return name;
     }
 
-    public String getOneTimePurchaseOfferPrice() {
-        return getOneTimePurchaseOfferDetails().getFormattedPrice();
+    public String getOneTimePurchaseOfferFormattedPrice() {
+        return oneTimePurchaseOfferFormattedPrice;
     }
 
-    public String getSubscriptionOfferPrice(int selectedOfferIndex, int selectedPricingPhaseIndex) {
-        return getSubscriptionOfferDetails().get(selectedOfferIndex).getPricingPhases().getPricingPhaseList().get(selectedPricingPhaseIndex).getFormattedPrice();
+    public long getOneTimePurchaseOfferPriceAmountMicros() {
+        return oneTimePurchaseOfferPriceAmountMicros;
     }
 
-    public ProductInfoDetails.OneTimePurchaseOfferDetails getOneTimePurchaseOfferDetails() {
-        return oneTimePurchaseOfferDetails;
+    public String getOneTimePurchaseOfferPriceCurrencyCode() {
+        return oneTimePurchaseOfferPriceCurrencyCode;
     }
 
-    public List<ProductDetails.SubscriptionOfferDetails> getSubscriptionOfferDetails() {
+    public List<SubscriptionOfferDetails> getSubscriptionOfferDetails() {
         return subscriptionOfferDetails;
+    }
+
+    private SubscriptionOfferDetails createSubscriptionOfferDetails(ProductDetails.SubscriptionOfferDetails offerDetails) {
+        return new SubscriptionOfferDetails(offerDetails.getOfferId(), offerDetails.getPricingPhases().getPricingPhaseList(), offerDetails.getOfferTags(), offerDetails.getOfferToken(), offerDetails.getBasePlanId());
     }
 }
