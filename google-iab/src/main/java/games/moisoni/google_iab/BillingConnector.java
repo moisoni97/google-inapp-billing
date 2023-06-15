@@ -6,9 +6,9 @@ import static com.android.billingclient.api.BillingClient.BillingResponseCode.ER
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.NETWORK_ERROR;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.OK;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_DISCONNECTED;
-import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_TIMEOUT;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.USER_CANCELED;
 import static com.android.billingclient.api.BillingClient.FeatureType.SUBSCRIPTIONS;
@@ -146,8 +146,10 @@ public class BillingConnector {
                                     new BillingResponse(ErrorType.ITEM_NOT_OWNED, billingResult)));
                             break;
                         case SERVICE_DISCONNECTED:
-                        case SERVICE_TIMEOUT:
                             Log("Initialization error: service disconnected/timeout. Trying to reconnect...");
+                            break;
+                        case NETWORK_ERROR:
+                            Log("Initialization error: service network error. Trying to reconnect...");
                             break;
                         default:
                             Log("Initialization error: " + new BillingResponse(ErrorType.BILLING_ERROR, billingResult));
