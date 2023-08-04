@@ -330,7 +330,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
         //purchase a subscription with multiple offers
         //the offer index represents the different offers in the subscription (after Google Billing v5+)
-        purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1", 0));
+        purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 0));
         purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 1));
 
         //cancel a subscription
