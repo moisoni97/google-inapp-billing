@@ -25,7 +25,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.2'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.3'
 }
 ```
 
