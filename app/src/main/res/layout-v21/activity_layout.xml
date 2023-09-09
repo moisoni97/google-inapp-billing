@@ -463,7 +463,7 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/subscription"
+                android:id="@+id/subscription_offer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/_6sdp"
