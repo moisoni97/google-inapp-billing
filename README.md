@@ -6,7 +6,7 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 ![image preview](https://i.postimg.cc/sxfcQF46/Google-In-App-Billing-Image.jpg)
 ![video example](https://i.postimg.cc/DZX0sDY2/Google-In-App-Billing-Purchase.gif)
 
-# Getting Started
+# Getting Started!
 
 * You project should build against Android 4.1.x (minSdkVersion 16).
 
