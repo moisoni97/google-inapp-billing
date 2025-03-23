@@ -31,6 +31,7 @@ import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.ConsumeParams;
+import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
@@ -97,7 +98,7 @@ public class BillingConnector {
      */
     private void init(Context context) {
         billingClient = BillingClient.newBuilder(context)
-                .enablePendingPurchases()
+                .enablePendingPurchases(PendingPurchasesParams.newBuilder().enablePrepaidPlans().enableOneTimeProducts().build())
                 .setListener((billingResult, purchases) -> {
                     switch (billingResult.getResponseCode()) {
                         case OK:
@@ -486,17 +487,20 @@ public class BillingConnector {
     public SupportState isSubscriptionSupported() {
         BillingResult response = billingClient.isFeatureSupported(SUBSCRIPTIONS);
 
-        switch (response.getResponseCode()) {
-            case OK:
+        return switch (response.getResponseCode()) {
+            case OK -> {
                 Log("Subscriptions support check: success");
-                return SupportState.SUPPORTED;
-            case SERVICE_DISCONNECTED:
+                yield SupportState.SUPPORTED;
+            }
+            case SERVICE_DISCONNECTED -> {
                 Log("Subscriptions support check: disconnected. Trying to reconnect...");
-                return SupportState.DISCONNECTED;
-            default:
+                yield SupportState.DISCONNECTED;
+            }
+            default -> {
                 Log("Subscriptions support check: error -> " + response.getResponseCode() + " " + response.getDebugMessage());
-                return SupportState.NOT_SUPPORTED;
-        }
+                yield SupportState.NOT_SUPPORTED;
+            }
+        };
     }
 
     /**
