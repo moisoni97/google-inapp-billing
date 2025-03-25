@@ -1,4 +1,4 @@
-# Google In-App Billing Library v6+ [![API](https://img.shields.io/badge/API-16%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=16) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
+# Google In-App Billing Library v7+ [![API](https://img.shields.io/badge/API-16%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=16) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
 A simple implementation of the Android In-App Billing API.
 
 It supports: in-app purchases (both consumable and non-consumable) and subscriptions with a base plan or multiple offers.
@@ -8,7 +8,7 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 
 # Getting Started
 
-* You project should build against Android 4.1.x (minSdkVersion 16).
+* You project should build against Android 5.0 (minSdkVersion 21).
 
 * Add the JitPack repository to your project's build.gradle file:
 
@@ -25,7 +25,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.3'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.4'
 }
 ```
 
@@ -51,16 +51,6 @@ android {
 
 dependencies {
   coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
-}
-```
-
-* For builds that use `minSdkVersion` lower than `21` add the above and also this:
-
-```gradle
-android {
-    defaultConfig {
-        multiDexEnabled true
-    }
 }
 ```
 
