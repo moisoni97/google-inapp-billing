@@ -41,7 +41,7 @@ public class ProductInfoDetails {
 
     }
 
-    public class SubscriptionOfferDetails {
+    public static class SubscriptionOfferDetails {
 
     }
 }
