@@ -5,15 +5,15 @@ plugins {
 
 android {
     namespace 'games.moisoni.google_inapp_billing'
-    compileSdkVersion 34
-    buildToolsVersion "34.0.0"
+    compileSdkVersion 36
 
     defaultConfig {
         applicationId "games.moisoni.google_inapp_billing"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 36
+
         versionCode 10
-        versionName "1.1.4"
+        versionName "1.1.5"
 
         multiDexEnabled true
 
@@ -34,20 +34,23 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
 dependencies {
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
 
     implementation 'com.intuit.sdp:sdp-android:1.1.0'
     implementation 'com.intuit.ssp:ssp-android:1.1.0'
