@@ -713,7 +713,7 @@ public class BillingConnector {
             activity.finish();
         } catch (Exception e) {
             Log("Handling subscription cancellation: error while trying to unsubscribe");
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
 
     }

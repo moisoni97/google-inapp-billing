@@ -19,11 +19,10 @@ public class SubscriptionOfferDetails {
         this.offerToken = offerToken;
         this.basePlanId = basePlanId;
 
-        List<ProductDetails.PricingPhase> pricingPhaseList = pricingPhases;
         this.pricingPhases = new ArrayList<>();
 
-        if (pricingPhaseList != null) {
-            for (ProductDetails.PricingPhase pricingPhase : pricingPhaseList) {
+        if (pricingPhases != null) {
+            for (ProductDetails.PricingPhase pricingPhase : pricingPhases) {
                 PricingPhases newPricingPhase = createPricingPhase(pricingPhase);
                 this.pricingPhases.add(newPricingPhase);
             }
@@ -55,46 +54,9 @@ public class SubscriptionOfferDetails {
                 pricingPhase.getBillingPeriod(), pricingPhase.getBillingCycleCount(), pricingPhase.getRecurrenceMode());
     }
 
-    public class PricingPhases {
+    public record PricingPhases(String formattedPrice, long priceAmountMicros,
+                                String priceCurrencyCode, String billingPeriod,
+                                int billingCycleCount, int recurrenceMode) {
 
-        private final String formattedPrice;
-        private final long priceAmountMicros;
-        private final String priceCurrencyCode;
-        private final String billingPeriod;
-        private final int billingCycleCount;
-        private final int recurrenceMode;
-
-        public PricingPhases(String formattedPrice, long priceAmountMicros, String priceCurrencyCode, String billingPeriod, int billingCycleCount, int recurrenceMode) {
-            this.formattedPrice = formattedPrice;
-            this.priceAmountMicros = priceAmountMicros;
-            this.priceCurrencyCode = priceCurrencyCode;
-            this.billingPeriod = billingPeriod;
-            this.billingCycleCount = billingCycleCount;
-            this.recurrenceMode = recurrenceMode;
-        }
-
-        public String getFormattedPrice() {
-            return formattedPrice;
-        }
-
-        public long getPriceAmountMicros() {
-            return priceAmountMicros;
-        }
-
-        public String getPriceCurrencyCode() {
-            return priceCurrencyCode;
-        }
-
-        public String getBillingPeriod() {
-            return billingPeriod;
-        }
-
-        public int getBillingCycleCount() {
-            return billingCycleCount;
-        }
-
-        public int getRecurrenceMode() {
-            return recurrenceMode;
-        }
     }
 }

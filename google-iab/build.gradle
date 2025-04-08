@@ -7,12 +7,11 @@ android {
 
     namespace 'games.moisoni.google_iab'
 
-    compileSdkVersion 34
-    buildToolsVersion "34.0.0"
+    compileSdkVersion 36
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 36
 
         multiDexEnabled true
 
@@ -55,7 +54,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.moisoni97'
                 artifactId = 'google-inapp-billing'
-                version = '1.1.4'
+                version = '1.1.5'
             }
         }
     }
@@ -63,13 +62,13 @@ afterEvaluate {
 
 dependencies {
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.google.guava:guava:31.1-android'
 
     implementation 'com.android.billingclient:billing:7.1.1'
