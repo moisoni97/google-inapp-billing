@@ -35,26 +35,25 @@ public class TextOutline extends androidx.appcompat.widget.AppCompatTextView {
 
         mTextColor = getCurrentTextColor();
         if (attrs != null) {
-            TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.TextOutline);
-            if (a.hasValue(R.styleable.TextOutline_outlineSize)) {
-                mOutlineSize = (int) a.getDimension(R.styleable.TextOutline_outlineSize, DEFAULT_OUTLINE_SIZE);
-            }
+            try (TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.TextOutline)) {
+                if (a.hasValue(R.styleable.TextOutline_outlineSize)) {
+                    mOutlineSize = (int) a.getDimension(R.styleable.TextOutline_outlineSize, DEFAULT_OUTLINE_SIZE);
+                }
 
-            if (a.hasValue(R.styleable.TextOutline_outlineColor)) {
-                mOutlineColor = a.getColor(R.styleable.TextOutline_outlineColor, DEFAULT_OUTLINE_COLOR);
-            }
+                if (a.hasValue(R.styleable.TextOutline_outlineColor)) {
+                    mOutlineColor = a.getColor(R.styleable.TextOutline_outlineColor, DEFAULT_OUTLINE_COLOR);
+                }
 
-            if (a.hasValue(R.styleable.TextOutline_android_shadowRadius)
-                    || a.hasValue(R.styleable.TextOutline_android_shadowDx)
-                    || a.hasValue(R.styleable.TextOutline_android_shadowDy)
-                    || a.hasValue(R.styleable.TextOutline_android_shadowColor)) {
-                mShadowRadius = a.getFloat(R.styleable.TextOutline_android_shadowRadius, 0);
-                mShadowDx = a.getFloat(R.styleable.TextOutline_android_shadowDx, 0);
-                mShadowDy = a.getFloat(R.styleable.TextOutline_android_shadowDy, 0);
-                mShadowColor = a.getColor(R.styleable.TextOutline_android_shadowColor, Color.TRANSPARENT);
+                if (a.hasValue(R.styleable.TextOutline_android_shadowRadius)
+                        || a.hasValue(R.styleable.TextOutline_android_shadowDx)
+                        || a.hasValue(R.styleable.TextOutline_android_shadowDy)
+                        || a.hasValue(R.styleable.TextOutline_android_shadowColor)) {
+                    mShadowRadius = a.getFloat(R.styleable.TextOutline_android_shadowRadius, 0);
+                    mShadowDx = a.getFloat(R.styleable.TextOutline_android_shadowDx, 0);
+                    mShadowDy = a.getFloat(R.styleable.TextOutline_android_shadowDy, 0);
+                    mShadowColor = a.getColor(R.styleable.TextOutline_android_shadowColor, Color.TRANSPARENT);
+                }
             }
-
-            a.recycle();
         }
 
     }
