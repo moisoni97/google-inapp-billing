@@ -18,12 +18,17 @@ import static com.android.billingclient.api.BillingClient.ProductType.SUBS;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
@@ -52,7 +57,7 @@ import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.ProductInfo;
 import games.moisoni.google_iab.models.PurchaseInfo;
 
-public class BillingConnector {
+public class BillingConnector implements DefaultLifecycleObserver {
 
     private static final String TAG = "BillingConnector";
     private static final int defaultResponseCode = 99;
@@ -62,6 +67,9 @@ public class BillingConnector {
     private long reconnectMilliseconds = RECONNECT_TIMER_START_MILLISECONDS;
 
     private final String base64Key;
+
+    private final Context context;
+    private Lifecycle lifecycle;
 
     private BillingClient billingClient;
     private BillingEventListener billingEventListener;
@@ -88,15 +96,20 @@ public class BillingConnector {
      * @param context   - is the application context
      * @param base64Key - is the public developer key from Play Console
      */
-    public BillingConnector(Context context, String base64Key) {
-        this.init(context);
+    public BillingConnector(@NonNull Context context, String base64Key, @Nullable Lifecycle lifecycle) {
+        this.context = context.getApplicationContext();
         this.base64Key = base64Key;
+        if (lifecycle != null) {
+            this.lifecycle = lifecycle;
+            lifecycle.addObserver(this);
+        }
+        this.init();
     }
 
     /**
      * To initialize BillingConnector
      */
-    private void init(Context context) {
+    private void init() {
         billingClient = BillingClient.newBuilder(context)
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enablePrepaidPlans().enableOneTimeProducts().build())
                 .setListener((billingResult, purchases) -> {
@@ -251,6 +264,12 @@ public class BillingConnector {
      * To connect the billing client with Play Console
      */
     public final BillingConnector connect() {
+        if (!isPlayStoreInstalled(context)) {
+            findUiHandler().post(() -> billingEventListener.onBillingError(
+                    BillingConnector.this,
+                    new BillingResponse(ErrorType.BILLING_UNAVAILABLE, "Google Play Store is not installed", BILLING_UNAVAILABLE)));
+            return this;
+        }
 
         List<QueryProductDetailsParams.Product> productInAppList = new ArrayList<>();
         List<QueryProductDetailsParams.Product> productSubsList = new ArrayList<>();
@@ -402,7 +421,8 @@ public class BillingConnector {
      *
      * @param productDetails - is the object provided by the billing client API
      */
-    private ProductInfo generateProductInfo(ProductDetails productDetails) {
+    @NonNull
+    private ProductInfo generateProductInfo(@NonNull ProductDetails productDetails) {
         SkuProductType skuProductType;
 
         switch (productDetails.getProductType()) {
@@ -506,27 +526,26 @@ public class BillingConnector {
     /**
      * Checks purchases signature for more security
      */
-    private void processPurchases(ProductType productType, List<Purchase> allPurchases, boolean purchasedProductsFetched) {
+    private void processPurchases(ProductType productType, @NonNull List<Purchase> allPurchases, boolean purchasedProductsFetched) {
         List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
 
-        //create a list with signature valid purchases
-        List<Purchase> validPurchases = allPurchases.stream().filter(this::isPurchaseSignatureValid).collect(Collectors.toList());
-        for (Purchase purchase : validPurchases) {
+        List<Purchase> validPurchases = allPurchases.stream()
+                .filter(this::isPurchaseSignatureValid)
+                .collect(Collectors.toList());
 
-            //query all products as a list
+        for (Purchase purchase : validPurchases) {
             List<String> purchasesProducts = purchase.getProducts();
 
-            //loop through all products and progress for each product individually
-            for (int i = 0; i < purchasesProducts.size(); i++) {
-                String purchaseProduct = purchasesProducts.get(i);
+            for (String purchaseProduct : purchasesProducts) {
+                Optional<ProductInfo> productInfo = fetchedProductInfoList.stream()
+                        .filter(it -> it.getProduct().equals(purchaseProduct))
+                        .findFirst();
 
-                Optional<ProductInfo> productInfo = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(purchaseProduct)).findFirst();
                 if (productInfo.isPresent()) {
                     ProductDetails productDetails = productInfo.get().getProductDetails();
 
                     PurchaseInfo purchaseInfo = new PurchaseInfo(generateProductInfo(productDetails), purchase);
                     signatureValidPurchases.add(purchaseInfo);
-
                 }
             }
         }
@@ -538,13 +557,10 @@ public class BillingConnector {
             findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
         }
 
-        purchasedProductsList.addAll(signatureValidPurchases);
-
         for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
             if (shouldAutoConsume) {
                 consumePurchase(purchaseInfo);
             }
-
             if (shouldAutoAcknowledge) {
                 boolean isProductConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
                 if (!isProductConsumable) {
@@ -560,7 +576,7 @@ public class BillingConnector {
      * Consumable products might be bought/consumed by users multiple times (for eg. diamonds, coins etc)
      * They have to be consumed within 3 days otherwise Google will refund the products
      */
-    public void consumePurchase(PurchaseInfo purchaseInfo) {
+    public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
@@ -594,7 +610,7 @@ public class BillingConnector {
      * <p>
      * This will avoid refunding for these products to users by Google
      */
-    public void acknowledgePurchase(PurchaseInfo purchaseInfo) {
+    public void acknowledgePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
             switch (purchaseInfo.getSkuProductType()) {
                 case NON_CONSUMABLE:
@@ -675,6 +691,85 @@ public class BillingConnector {
     }
 
     /**
+     * Retries a pending purchase for the given product ID.
+     * <p>
+     * Checks if the product is in a pending state.
+     * <p>
+     * Retries with exponential backoff (max 3 retries).
+     * <p>
+     * Notifies listener of success/failure.
+     *
+     * @param productId - the product ID to retry.
+     */
+    public void retryPendingPurchase(String productId) {
+        if (!isReady()) {
+            Log("Cannot retry pending purchase: Billing client is not ready");
+            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
+                    "Billing client is not ready", defaultResponseCode)));
+            return;
+        }
+
+        Optional<PurchaseInfo> pendingPurchase = purchasedProductsList.stream()
+                .filter(purchaseInfo -> purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending())
+                .findFirst();
+
+        if (!pendingPurchase.isPresent()) {
+            Log("No pending purchase found for product: " + productId);
+            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.ITEM_NOT_OWNED,
+                    "No pending purchase for: " + productId, defaultResponseCode)));
+            return;
+        }
+
+        retryPurchaseWithBackoff(pendingPurchase.get(), 0);
+    }
+
+    /**
+     * Retries a pending purchase with exponential backoff.
+     *
+     * @param purchaseInfo - the pending purchase to retry.
+     * @param retryCount   - current retry attempt (starts at 0).
+     */
+    private void retryPurchaseWithBackoff(PurchaseInfo purchaseInfo, int retryCount) {
+        final int MAX_RETRIES = 3;
+        final long INITIAL_DELAY_MS = 1000L;
+        final long MAX_DELAY_MS = 10000L;
+
+        if (retryCount >= MAX_RETRIES) {
+            Log("Max retries reached for pending purchase: " + purchaseInfo.getProduct());
+            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.PENDING_RETRY_ERROR,
+                    "Pending purchase still not complete after " + MAX_RETRIES + " retries", defaultResponseCode)));
+            return;
+        }
+
+        long delayMs = Math.min(INITIAL_DELAY_MS * (1L << retryCount), MAX_DELAY_MS);
+
+        Log("Retrying pending purchase (" + (retryCount + 1) + "/" + MAX_RETRIES + ") for: " + purchaseInfo.getProduct());
+
+        findUiHandler().postDelayed(() -> billingClient.queryPurchasesAsync(
+                QueryPurchasesParams.newBuilder()
+                        .setProductType(purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ? SUBS : INAPP)
+                        .build(),
+                (billingResult, purchases) -> {
+                    if (billingResult.getResponseCode() == OK) {
+                        boolean isNowComplete = purchases.stream().anyMatch(purchase -> purchase.getPurchaseToken().equals(purchaseInfo.getPurchase().getPurchaseToken())
+                                && purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED);
+
+                        if (isNowComplete) {
+                            Log("Pending purchase complete: " + purchaseInfo.getProduct());
+                            processPurchases(purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ? ProductType.SUBS : ProductType.INAPP,
+                                    purchases, false);
+                        } else {
+                            retryPurchaseWithBackoff(purchaseInfo, retryCount + 1);
+                        }
+                    } else {
+                        Log("Failed to query purchases during retry: " + billingResult.getDebugMessage());
+                        retryPurchaseWithBackoff(purchaseInfo, retryCount + 1);
+                    }
+                }
+        ), delayMs);
+    }
+
+    /**
      * Called to purchase a subscription with offers
      * <p>
      * To avoid confusion while trying to purchase a subscription
@@ -719,9 +814,57 @@ public class BillingConnector {
     }
 
     /**
+     * Checks if a subscription is currently active and auto-renewing
+     *
+     * @param productId - is the subscription product ID to check
+     */
+    public boolean isSubscriptionActive(String productId) {
+        for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+            if (purchaseInfo.getProduct().equals(productId))
+                return purchaseInfo.getPurchase().isAutoRenewing();
+        }
+        return false;
+    }
+
+    /**
+     * Checks if a purchase is in pending state
+     * <p>
+     * Pending purchases require completion through the Google Play Store
+     * and will eventually transition to PURCHASED or canceled state
+     *
+     * @param productId - is the product ID to check
+     */
+    public boolean isPurchasePending(String productId) {
+        for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+            if (purchaseInfo.getProduct().equals(productId))
+                return purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING;
+        }
+        return false;
+    }
+
+    /**
+     * Verifies if Google Play Store is installed on the device
+     * <p>
+     * This is required for all in-app billing operations
+     *
+     * @param context - is the application context
+     * @throws IllegalArgumentException if context is null
+     */
+    public boolean isPlayStoreInstalled(@NonNull Context context) {
+        try {
+            PackageManager pm = context.getPackageManager();
+            pm.getPackageInfo("com.android.vending", PackageManager.GET_ACTIVITIES);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            Log("Google Play Store is not installed");
+            return false;
+        }
+    }
+
+    /**
      * Checks purchase state synchronously
      */
-    public final PurchasedResult isPurchased(ProductInfo productInfo) {
+    public final PurchasedResult isPurchased(@NonNull ProductInfo productInfo) {
         return checkPurchased(productInfo.getProduct());
     }
 
@@ -743,7 +886,7 @@ public class BillingConnector {
     /**
      * Checks purchase signature validity
      */
-    private boolean isPurchaseSignatureValid(Purchase purchase) {
+    private boolean isPurchaseSignatureValid(@NonNull Purchase purchase) {
         return Security.verifyPurchase(base64Key, purchase.getOriginalJson(), purchase.getSignature());
     }
 
@@ -752,6 +895,7 @@ public class BillingConnector {
      * <p>
      * BillingEventListener runs on it
      */
+    @NonNull
     private Handler findUiHandler() {
         return new Handler(Looper.getMainLooper());
     }
@@ -770,10 +914,19 @@ public class BillingConnector {
      * <p>
      * To avoid leaks this method should be called when BillingConnector is no longer needed
      */
-    public void release() {
+    private void release() {
         if (billingClient != null && billingClient.isReady()) {
             Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
+        }
+    }
+
+    @Override
+    public void onDestroy(@NonNull LifecycleOwner owner) {
+        DefaultLifecycleObserver.super.onDestroy(owner);
+        release();
+        if (lifecycle != null) {
+            lifecycle.removeObserver(this);
         }
     }
 }

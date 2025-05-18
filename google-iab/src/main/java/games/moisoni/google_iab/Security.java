@@ -4,6 +4,8 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -27,8 +29,8 @@ class Security {
      * Verifies that the data was signed with the given signature
      *
      * @param base64PublicKey the base64-encoded public key to use for verifying.
-     * @param signedData the signed JSON string (signed, not encrypted)
-     * @param signature the signature for the data, signed with the private key
+     * @param signedData      the signed JSON string (signed, not encrypted)
+     * @param signature       the signature for the data, signed with the private key
      */
     static public boolean verifyPurchase(String base64PublicKey, String signedData, String signature) {
         if ((TextUtils.isEmpty(signedData) || TextUtils.isEmpty(base64PublicKey)
@@ -77,6 +79,7 @@ class Security {
      * @param signature  server signature
      * @return true if the data and signature match
      */
+    @NonNull
     static private Boolean verify(PublicKey publicKey, String signedData, String signature) {
         byte[] signatureBytes;
         try {

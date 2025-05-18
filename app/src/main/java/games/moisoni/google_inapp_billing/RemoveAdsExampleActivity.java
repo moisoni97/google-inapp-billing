@@ -59,7 +59,7 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
         List<String> nonConsumableIds = new ArrayList<>();
         nonConsumableIds.add(getString(R.string.remove_ads_play_console_id));
 
-        billingConnector = new BillingConnector(this, getString(R.string.license_key_play_console))
+        billingConnector = new BillingConnector(this, getString(R.string.license_key_play_console), getLifecycle())
                 .setNonConsumableIds(nonConsumableIds)
                 .autoAcknowledge()
                 .enableLogging()

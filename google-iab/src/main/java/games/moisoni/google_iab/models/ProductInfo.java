@@ -1,8 +1,11 @@
 package games.moisoni.google_iab.models;
 
+import androidx.annotation.NonNull;
+
 import com.android.billingclient.api.ProductDetails;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,7 +25,7 @@ public class ProductInfo {
     private final String oneTimePurchaseOfferPriceCurrencyCode;
     private final List<SubscriptionOfferDetails> subscriptionOfferDetails;
 
-    public ProductInfo(SkuProductType skuProductType, ProductDetails productDetails) {
+    public ProductInfo(SkuProductType skuProductType, @NonNull ProductDetails productDetails) {
         this.skuProductType = skuProductType;
         this.productDetails = productDetails;
         this.product = productDetails.getProductId();
@@ -30,9 +33,15 @@ public class ProductInfo {
         this.title = productDetails.getTitle();
         this.type = productDetails.getProductType();
         this.name = productDetails.getName();
-        this.oneTimePurchaseOfferFormattedPrice = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getFormattedPrice).orElse(null);
-        this.oneTimePurchaseOfferPriceAmountMicros = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getPriceAmountMicros).orElse(0L);
-        this.oneTimePurchaseOfferPriceCurrencyCode = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails()).map(ProductDetails.OneTimePurchaseOfferDetails::getPriceCurrencyCode).orElse(null);
+        this.oneTimePurchaseOfferFormattedPrice = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
+                .map(ProductDetails.OneTimePurchaseOfferDetails::getFormattedPrice)
+                .orElse(null);
+        this.oneTimePurchaseOfferPriceAmountMicros = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
+                .map(ProductDetails.OneTimePurchaseOfferDetails::getPriceAmountMicros)
+                .orElse(0L);
+        this.oneTimePurchaseOfferPriceCurrencyCode = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
+                .map(ProductDetails.OneTimePurchaseOfferDetails::getPriceCurrencyCode)
+                .orElse(null);
 
         List<ProductDetails.SubscriptionOfferDetails> offerDetailsList = productDetails.getSubscriptionOfferDetails();
         this.subscriptionOfferDetails = new ArrayList<>();
@@ -86,10 +95,11 @@ public class ProductInfo {
     }
 
     public List<SubscriptionOfferDetails> getSubscriptionOfferDetails() {
-        return subscriptionOfferDetails;
+        return Collections.unmodifiableList(subscriptionOfferDetails);
     }
 
-    private SubscriptionOfferDetails createSubscriptionOfferDetails(ProductDetails.SubscriptionOfferDetails offerDetails) {
+    @NonNull
+    private SubscriptionOfferDetails createSubscriptionOfferDetails(@NonNull ProductDetails.SubscriptionOfferDetails offerDetails) {
         return new SubscriptionOfferDetails(offerDetails.getOfferId(), offerDetails.getPricingPhases().getPricingPhaseList(), offerDetails.getOfferTags(), offerDetails.getOfferToken(), offerDetails.getBasePlanId());
     }
 }
