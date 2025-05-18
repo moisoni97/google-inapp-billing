@@ -75,7 +75,7 @@ public class JavaSampleActivity extends AppCompatActivity {
         subscriptionIds.add("subscription_id_2");
         subscriptionIds.add("subscription_id_3");
 
-        billingConnector = new BillingConnector(this, "license_key") //"license_key" - public developer key from Play Console
+        billingConnector = new BillingConnector(this, "license_key", getLifecycle()) //"license_key" - public developer key from Play Console
                 .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
                 .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
                 .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
@@ -287,6 +287,9 @@ public class JavaSampleActivity extends AppCompatActivity {
                     case ITEM_NOT_OWNED:
                         //TODO - failure to consume since item is not owned
                         break;
+                    case PENDING_RETRY_ERROR:
+                        //TODO - failure to retry a pending purchase
+                        break;
                 }
 
                 Log.d("BillingConnector", "Error type: " + response.getErrorType() +
@@ -438,13 +441,5 @@ public class JavaSampleActivity extends AppCompatActivity {
          * To cancel a subscription
          * */
         billingConnector.unsubscribe(JavaSampleActivity.this, "product_id");
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (billingConnector != null) {
-            billingConnector.release();
-        }
     }
 }

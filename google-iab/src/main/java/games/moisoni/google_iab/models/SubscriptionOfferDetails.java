@@ -1,5 +1,7 @@
 package games.moisoni.google_iab.models;
 
+import androidx.annotation.NonNull;
+
 import com.android.billingclient.api.ProductDetails;
 
 import java.util.ArrayList;
@@ -49,7 +51,8 @@ public class SubscriptionOfferDetails {
         return pricingPhases;
     }
 
-    private PricingPhases createPricingPhase(ProductDetails.PricingPhase pricingPhase) {
+    @NonNull
+    private PricingPhases createPricingPhase(@NonNull ProductDetails.PricingPhase pricingPhase) {
         return new PricingPhases(pricingPhase.getFormattedPrice(), pricingPhase.getPriceAmountMicros(), pricingPhase.getPriceCurrencyCode(),
                 pricingPhase.getBillingPeriod(), pricingPhase.getBillingCycleCount(), pricingPhase.getRecurrenceMode());
     }

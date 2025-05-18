@@ -19,7 +19,7 @@ public class BillingResponse {
         this.responseCode = responseCode;
     }
 
-    public BillingResponse(ErrorType errorType, BillingResult billingResult) {
+    public BillingResponse(ErrorType errorType, @NonNull BillingResult billingResult) {
         this(errorType, billingResult.getDebugMessage(), billingResult.getResponseCode());
     }
 
