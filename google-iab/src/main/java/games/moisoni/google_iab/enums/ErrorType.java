@@ -17,5 +17,6 @@ public enum ErrorType {
     DEVELOPER_ERROR,
     ERROR,
     ITEM_ALREADY_OWNED,
-    ITEM_NOT_OWNED
+    ITEM_NOT_OWNED,
+    PENDING_RETRY_ERROR,
 }

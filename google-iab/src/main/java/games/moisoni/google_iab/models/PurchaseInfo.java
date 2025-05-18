@@ -1,8 +1,11 @@
 package games.moisoni.google_iab.models;
 
+import androidx.annotation.NonNull;
+
 import com.android.billingclient.api.AccountIdentifiers;
 import com.android.billingclient.api.Purchase;
 
+import java.util.Collections;
 import java.util.List;
 
 import games.moisoni.google_iab.enums.SkuProductType;
@@ -33,7 +36,7 @@ public class PurchaseInfo {
     private final boolean isAcknowledged;
     private final boolean isAutoRenewing;
 
-    public PurchaseInfo(ProductInfo productInfo, Purchase purchase) {
+    public PurchaseInfo(@NonNull ProductInfo productInfo, @NonNull Purchase purchase) {
         this.productInfo = productInfo;
         this.purchase = purchase;
         this.product = productInfo.getProduct();
@@ -74,7 +77,7 @@ public class PurchaseInfo {
     }
 
     public List<String> getProducts() {
-        return products;
+        return Collections.unmodifiableList(products);
     }
 
     public String getOrderId() {
@@ -119,5 +122,13 @@ public class PurchaseInfo {
 
     public boolean isAutoRenewing() {
         return isAutoRenewing;
+    }
+
+    public boolean isPurchased() {
+        return purchaseState == Purchase.PurchaseState.PURCHASED;
+    }
+
+    public boolean isPending() {
+        return purchaseState == Purchase.PurchaseState.PENDING;
     }
 }
