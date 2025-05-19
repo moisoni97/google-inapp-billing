@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import games.moisoni.google_iab.BillingConnector;
-import games.moisoni.google_iab.BillingEventListener;
+import games.moisoni.google_iab.listener.BillingEventListener;
 import games.moisoni.google_iab.enums.PurchasedResult;
 import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.SupportState;
@@ -286,9 +286,6 @@ public class JavaSampleActivity extends AppCompatActivity {
                         break;
                     case ITEM_NOT_OWNED:
                         //TODO - failure to consume since item is not owned
-                        break;
-                    case PENDING_RETRY_ERROR:
-                        //TODO - failure to retry a pending purchase
                         break;
                 }
 
