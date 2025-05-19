@@ -6,9 +6,65 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 ![image preview](https://i.postimg.cc/sxfcQF46/Google-In-App-Billing-Image.jpg)
 ![video example](https://i.postimg.cc/DZX0sDY2/Google-In-App-Billing-Purchase.gif)
 
+# Implementation
+
+* ### Recommended usage:
+
+It is recommended to implement the `BillingConnector` instance in your MainActivity (or any other activity that the user **frequently interacts with**).
+
+This is necessary because sometimes (due to different reasons) the purchase is not instantly processed and will have a `PENDING` state. All `PENDING` state purchases cannot be `acknowledged` or `consumed` and **will be refunded** by Google after 3 days.
+
+The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with**, it will never receive the `Billing API callback` to update the purchase status and the user will lose the purchase.
+
+The library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks to let you know that the purchase status is still `PENDING`. Here you can inform the user to wait or to come back a little bit later to receive the purchase.
+
+
+* ### Special use case only (advanced):
+The library also provides a `public void retryPendingPurchase(String productId)` method to "globally" retry `PENDING` purchases and `auto acknowledge/consume` them with exponential backoff, but to reliably use this, the `BillingConnector` must also be set in the `Application` level class and therefore have `two BillingConnector` logics in your app.
+
+Set a method (in the application-level class) to retry all pending purchases:
+
+```java
+public void retryPendingPurchases() {
+    if (billingConnector == null) return;
+
+    List<PurchaseInfo> purchases = billingConnector.getPurchasedProductsList();
+    for (PurchaseInfo purchase : purchases) {
+        if (purchase.isPending()) {
+            billingConnector.retryPendingPurchase(purchase.getProduct());
+        }
+    }
+}
+```
+
+Call it in the `onProductsPurchased` callback (from the application-level class):
+
+```java
+@Override
+public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
+    //automatically retry when new pending purchases are detected
+    for (PurchaseInfo purchase : purchases) {
+        if (purchase.isPending()) {
+            retryPendingPurchases();
+            break;
+        }
+    }
+}
+```
+
+Or in any other activity `onResume()`, to constantly check for `PENDING` purchases:
+
+```java
+@Override
+protected void onResume() {
+    super.onResume();
+    ((MyApplication) getApplication()).getBillingConnector().retryAllPendingPurchases();
+}
+```
+
 # Getting Started
 
-* You project should build against Android 5.0 (minSdkVersion 21).
+* Your project should build against Android 5.0 (minSdkVersion 21).
 
 * Add the JitPack repository to your project's build.gradle file:
 
@@ -25,7 +81,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.4'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.5'
 }
 ```
 
