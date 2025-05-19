@@ -106,6 +106,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
      *
      * @param context   - is the application context
      * @param base64Key - is the public developer key from Play Console
+     * @param lifecycle - (optional) the lifecycle object to automatically manage the BillingConnector's
+     *                  lifecycle. If provided, the connector will automatically handle connection
+     *                  cleanup when the lifecycle owner is destroyed. Can be null if manual lifecycle
+     *                  management is preferred.
      */
     public BillingConnector(@NonNull Context context, String base64Key, @Nullable Lifecycle lifecycle) {
         this.context = context.getApplicationContext();
