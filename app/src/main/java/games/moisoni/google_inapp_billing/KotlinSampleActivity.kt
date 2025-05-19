@@ -8,7 +8,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.github.hariprasanths.bounceview.BounceView
 import games.moisoni.google_iab.BillingConnector
-import games.moisoni.google_iab.BillingEventListener
+import games.moisoni.google_iab.listener.BillingEventListener
 import games.moisoni.google_iab.enums.ErrorType
 import games.moisoni.google_iab.enums.PurchasedResult
 import games.moisoni.google_iab.enums.ProductType
@@ -84,7 +84,8 @@ class KotlinSampleActivity : AppCompatActivity() {
             .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
             .connect() //to connect billing client with Play Console
 
-        billingConnector.setBillingEventListener(object : BillingEventListener {
+        billingConnector.setBillingEventListener(object :
+            BillingEventListener {
             override fun onProductsFetched(productDetails: MutableList<ProductInfo>) {
                 var product: String
                 var price: String
@@ -335,10 +336,6 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                     ErrorType.ITEM_NOT_OWNED -> {
                         //TODO - failure to consume since item is not owned
-                    }
-
-                    ErrorType.PENDING_RETRY_ERROR -> {
-                        //TODO - failure to retry a pending purchase
                     }
 
                     else -> {
