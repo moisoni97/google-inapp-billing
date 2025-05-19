@@ -8,7 +8,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.github.hariprasanths.bounceview.BounceView
 import games.moisoni.google_iab.BillingConnector
-import games.moisoni.google_iab.listener.BillingEventListener
+import games.moisoni.google_iab.listeners.BillingEventListener
 import games.moisoni.google_iab.enums.ErrorType
 import games.moisoni.google_iab.enums.PurchasedResult
 import games.moisoni.google_iab.enums.ProductType
