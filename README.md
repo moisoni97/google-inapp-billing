@@ -37,7 +37,7 @@ public void retryPendingPurchases() {
 }
 ```
 
-Call it in the `onProductsPurchased` callback (from the application-level class):
+Call the above method in the `onProductsPurchased` callback (from the application-level class):
 
 ```java
 @Override
@@ -52,7 +52,7 @@ public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
 }
 ```
 
-Or in any other activity `onResume()`, to constantly check for `PENDING` purchases:
+Or in any other activity in `onResume()`, to constantly check for `PENDING` purchases:
 
 ```java
 @Override
@@ -117,9 +117,10 @@ This step is required to enable support for some APIs on lower SDK versions that
 * Create an instance of BillingConnector class. Constructor will take 2 parameters:
   - *Context*
   - *License key from `Play Console`*
+  - *Lifecycle object (or `null` to handle instance cleanup manually)*
 
 ```java
-billingConnector = new BillingConnector(this, "license_key")
+billingConnector = new BillingConnector(this, "license_key", getLifecycle())
                 .setConsumableIds(consumableIds)
                 .setNonConsumableIds(nonConsumableIds)
                 .setSubscriptionIds(subscriptionIds)
@@ -256,12 +257,24 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
                     case ITEM_NOT_OWNED:
                         //TODO - failure to consume since item is not owned
                         break;
+
+                    //related only to a specific method (public void retryPendingPurchase(String productId))
+                    //https://github.com/moisoni97/google-inapp-billing?tab=readme-ov-file#special-use-case-only-advanced
+                    case NOT_PENDING:
+                        //TODO - no pending purchase for product ID
+                        break;
+                    case PENDING_PURCHASE_CANCELED:
+                        //TODO - pending purchase may have been canceled
+                        break;
+                    case PENDING_PURCHASE_RETRY_ERROR:
+                        //TODO - pending purchase still not completed after retries
+                        break;
                 }
             }
         });
 ```
 
-# Initiate a purchase
+# Initiate Purchase
 
 * Purchase a non-consumable/consumable product:
 
@@ -288,8 +301,9 @@ billingConnector.subscribe(this, "product_id", 1);
 billingConnector.unsubscribe(this, "product_id");
 ```
 
-# Release instance
+# Release Instance
 
+* Starting from version `1.1.5`, the library automatically releases the `BillingConnector` instance (set the `lifecycle` object to the `BillingConnector` constructor).
 * To avoid memory leaks don't forget to release the BillingConnector instance when it's no longer needed.
 
 ```java
@@ -312,7 +326,7 @@ The sample app provides an example for `Kotlin` users.
 
 Go through the sample app to see a more advanced integration of the library. 
 
-It also shows how to implement some `useful public methods`.
+It also shows a simple logic for a "remove ads button" scenario.
 
 # Credits
 
