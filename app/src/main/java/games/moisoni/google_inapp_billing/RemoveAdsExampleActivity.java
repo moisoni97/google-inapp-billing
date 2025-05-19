@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import games.moisoni.google_iab.BillingConnector;
-import games.moisoni.google_iab.BillingEventListener;
+import games.moisoni.google_iab.listener.BillingEventListener;
 import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.ProductInfo;

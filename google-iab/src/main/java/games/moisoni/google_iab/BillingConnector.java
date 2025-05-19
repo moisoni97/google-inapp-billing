@@ -44,6 +44,7 @@ import com.android.billingclient.api.QueryPurchasesParams;
 import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -53,6 +54,9 @@ import games.moisoni.google_iab.enums.ProductType;
 import games.moisoni.google_iab.enums.PurchasedResult;
 import games.moisoni.google_iab.enums.SkuProductType;
 import games.moisoni.google_iab.enums.SupportState;
+import games.moisoni.google_iab.listener.AcknowledgeEventListener;
+import games.moisoni.google_iab.listener.BillingEventListener;
+import games.moisoni.google_iab.listener.ConsumeEventListener;
 import games.moisoni.google_iab.models.BillingResponse;
 import games.moisoni.google_iab.models.ProductInfo;
 import games.moisoni.google_iab.models.PurchaseInfo;
@@ -65,6 +69,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private static final long RECONNECT_TIMER_START_MILLISECONDS = 1000L;
     private static final long RECONNECT_TIMER_MAX_TIME_MILLISECONDS = 1000L * 60L * 15L;
     private long reconnectMilliseconds = RECONNECT_TIMER_START_MILLISECONDS;
+
+    private static final int MAX_PENDING_RETRIES = 3;
+    private static final long INITIAL_RETRY_DELAY_MS = 1000L;
+    private static final long MAX_RETRY_DELAY_MS = 10000L;
+    private static final long MAX_PENDING_DURATION_MS = 1000 * 60 * 5;
 
     private final String base64Key;
 
@@ -82,6 +91,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
+
+    private final Object purchasedProductsSync = new Object(); //object for thread safety
 
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
@@ -550,6 +561,21 @@ public class BillingConnector implements DefaultLifecycleObserver {
             }
         }
 
+        //synchronize access to purchasedProductsList
+        synchronized (purchasedProductsSync) {
+            //clear existing purchases of this type when fetching (to avoid duplicates)
+            if (purchasedProductsFetched) {
+                purchasedProductsList.removeIf(purchaseInfo ->
+                        purchaseInfo.getSkuProductType() == (productType == ProductType.SUBS ?
+                                SkuProductType.SUBSCRIPTION :
+                                (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE ?
+                                        SkuProductType.CONSUMABLE : SkuProductType.NON_CONSUMABLE)));
+            }
+
+            //add new purchases
+            purchasedProductsList.addAll(signatureValidPurchases);
+        }
+
         if (purchasedProductsFetched) {
             fetchedPurchasedProducts = true;
             findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(productType, signatureValidPurchases));
@@ -585,7 +611,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                     billingClient.consumeAsync(consumeParams, (billingResult, purchaseToken) -> {
                         if (billingResult.getResponseCode() == OK) {
-                            purchasedProductsList.remove(purchaseInfo);
+                            synchronized (purchasedProductsSync) {
+                                purchasedProductsList.remove(purchaseInfo);
+                            }
                             findUiHandler().post(() -> billingEventListener.onPurchaseConsumed(purchaseInfo));
                         } else {
                             Log("Handling consumables: error during consumption attempt: " + billingResult.getDebugMessage());
@@ -653,7 +681,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Called to purchase a non-consumable/consumable product
      * <p>
-     * The offer index represents the different offers in the subscription.
+     * The offer index represents the different offers in the subscription
      */
     private void purchase(Activity activity, String productId, int selectedOfferIndex) {
         if (checkProductBeforeInteraction(productId)) {
@@ -691,83 +719,379 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Retries a pending purchase for the given product ID.
-     * <p>
-     * Checks if the product is in a pending state.
-     * <p>
-     * Retries with exponential backoff (max 3 retries).
-     * <p>
-     * Notifies listener of success/failure.
+     * Verifies if a purchase still exists in the purchased products list
      *
-     * @param productId - the product ID to retry.
+     * @param purchaseInfo - the purchase to verify
+     * @return true if purchase exists and is still pending, false otherwise
+     */
+    private boolean verifyPurchaseState(PurchaseInfo purchaseInfo) {
+        synchronized (purchasedProductsSync) {
+            boolean stillExists = purchasedProductsList.stream()
+                    .anyMatch(p -> p.getPurchase().getPurchaseToken()
+                            .equals(purchaseInfo.getPurchase().getPurchaseToken()));
+
+            if (!stillExists) {
+                Log("Pending purchase no longer exists: " + purchaseInfo.getProduct());
+                notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
+                        "Pending purchase was removed");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Retries a pending purchase for the given product ID
+     * <p>
+     * Checks if the product is in a pending state
+     * <p>
+     * Retries with exponential backoff (max 3 retries)
+     * <p>
+     * Notifies listener of success/failure
+     *
+     * @param productId - the product ID to retry
      */
     public void retryPendingPurchase(String productId) {
         if (!isReady()) {
             Log("Cannot retry pending purchase: Billing client is not ready");
-            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
-                    "Billing client is not ready", defaultResponseCode)));
+            notifyBillingError(ErrorType.CLIENT_NOT_READY, "Billing client is not ready");
             return;
         }
 
-        Optional<PurchaseInfo> pendingPurchase = purchasedProductsList.stream()
-                .filter(purchaseInfo -> purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending())
-                .findFirst();
+        // Synchronize the entire check to prevent races
+        PurchaseInfo pendingPurchase;
+        synchronized (purchasedProductsSync) {
+            pendingPurchase = purchasedProductsList.stream()
+                    .filter(purchaseInfo -> purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending())
+                    .findFirst()
+                    .orElse(null);
+        }
 
-        if (!pendingPurchase.isPresent()) {
+        if (pendingPurchase == null || !pendingPurchase.isPending()) {
             Log("No pending purchase found for product: " + productId);
-            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.ITEM_NOT_OWNED,
-                    "No pending purchase for: " + productId, defaultResponseCode)));
+            notifyBillingError(ErrorType.NOT_PENDING, "No pending purchase for: " + productId);
             return;
         }
 
-        retryPurchaseWithBackoff(pendingPurchase.get(), 0);
+        retryPurchaseWithBackoff(pendingPurchase, 0, System.currentTimeMillis());
     }
 
     /**
-     * Retries a pending purchase with exponential backoff.
+     * Retries a pending purchase with exponential backoff
+     * Includes acknowledgment and consume retry logic for completed purchases
      *
-     * @param purchaseInfo - the pending purchase to retry.
-     * @param retryCount   - current retry attempt (starts at 0).
+     * @param purchaseInfo - the pending purchase to retry
+     * @param retryCount   - current retry attempt (starts at 0)
      */
-    private void retryPurchaseWithBackoff(PurchaseInfo purchaseInfo, int retryCount) {
-        final int MAX_RETRIES = 3;
-        final long INITIAL_DELAY_MS = 1000L;
-        final long MAX_DELAY_MS = 10000L;
-
-        if (retryCount >= MAX_RETRIES) {
-            Log("Max retries reached for pending purchase: " + purchaseInfo.getProduct());
-            findUiHandler().post(() -> billingEventListener.onBillingError(this, new BillingResponse(ErrorType.PENDING_RETRY_ERROR,
-                    "Pending purchase still not complete after " + MAX_RETRIES + " retries", defaultResponseCode)));
+    private void retryPurchaseWithBackoff(PurchaseInfo purchaseInfo, int retryCount, long startTime) {
+        if (shouldStopRetrying(purchaseInfo, retryCount, startTime)) {
+            handleRetryFailure(purchaseInfo);
             return;
         }
 
-        long delayMs = Math.min(INITIAL_DELAY_MS * (1L << retryCount), MAX_DELAY_MS);
+        long delayMs = calculateRetryDelay(retryCount);
+        Log("Retrying pending purchase (" + (retryCount + 1) +
+                "/" + MAX_PENDING_RETRIES + ") for: " + purchaseInfo.getProduct());
 
-        Log("Retrying pending purchase (" + (retryCount + 1) + "/" + MAX_RETRIES + ") for: " + purchaseInfo.getProduct());
+        findUiHandler().postDelayed(() -> {
+            boolean shouldContinue = verifyPurchaseState(purchaseInfo);
+            if (!shouldContinue) return;
 
-        findUiHandler().postDelayed(() -> billingClient.queryPurchasesAsync(
+            queryPurchasesForRetry(purchaseInfo, retryCount, startTime);
+        }, delayMs);
+    }
+
+    /**
+     * Queries purchases from Google Play for retry attempt
+     *
+     * @param purchaseInfo - the pending purchase being retried
+     * @param retryCount   - current number of retry attempts
+     * @param startTime    - timestamp when retries began (in milliseconds)
+     */
+    private void queryPurchasesForRetry(@NonNull PurchaseInfo purchaseInfo, int retryCount, long startTime) {
+        billingClient.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder()
-                        .setProductType(purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ? SUBS : INAPP)
+                        .setProductType(purchaseInfo.getSkuProductType() ==
+                                SkuProductType.SUBSCRIPTION ? SUBS : INAPP)
                         .build(),
                 (billingResult, purchases) -> {
-                    if (billingResult.getResponseCode() == OK) {
-                        boolean isNowComplete = purchases.stream().anyMatch(purchase -> purchase.getPurchaseToken().equals(purchaseInfo.getPurchase().getPurchaseToken())
-                                && purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED);
-
-                        if (isNowComplete) {
-                            Log("Pending purchase complete: " + purchaseInfo.getProduct());
-                            processPurchases(purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ? ProductType.SUBS : ProductType.INAPP,
-                                    purchases, false);
-                        } else {
-                            retryPurchaseWithBackoff(purchaseInfo, retryCount + 1);
-                        }
-                    } else {
-                        Log("Failed to query purchases during retry: " + billingResult.getDebugMessage());
-                        retryPurchaseWithBackoff(purchaseInfo, retryCount + 1);
+                    if (billingResult.getResponseCode() != OK) {
+                        Log("Failed to query purchases during retry: " +
+                                billingResult.getDebugMessage());
+                        retryPurchaseWithBackoff(purchaseInfo,
+                                retryCount + 1,
+                                startTime);
+                        return;
                     }
-                }
-        ), delayMs);
+
+                    handlePurchaseQueryResult(purchaseInfo, purchases, retryCount, startTime);
+                });
     }
+
+    /**
+     * Handles the result of a purchase query during retry attempt
+     *
+     * @param originalInfo - the original pending purchase info
+     * @param purchases    - list of purchases returned from query
+     * @param retryCount   - current number of retry attempts
+     * @param startTime    - timestamp when retries began (in milliseconds)
+     */
+    private void handlePurchaseQueryResult(PurchaseInfo originalInfo, @NonNull List<Purchase> purchases, int retryCount, long startTime) {
+        Optional<Purchase> completedPurchase = purchases.stream()
+                .filter(p -> p.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken()))
+                .findFirst();
+
+        if (!completedPurchase.isPresent()) {
+            Log("Pending purchase not found, may have been canceled: " +
+                    originalInfo.getProduct());
+            notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
+                    "Pending purchase may have been canceled");
+            return;
+        }
+
+        if (completedPurchase.get().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+            Log("Pending purchase completed: " + originalInfo.getProduct());
+            handleCompletedPurchase(originalInfo, completedPurchase.get());
+        } else {
+            retryPurchaseWithBackoff(originalInfo, retryCount + 1, startTime);
+        }
+    }
+
+    /**
+     * Acknowledges a purchase with retry logic
+     *
+     * @param purchaseInfo - the purchase to acknowledge
+     * @param retryCount   - current retry attempt
+     * @param maxRetries   - maximum number of retries
+     * @param listener     - to handle success/failure
+     */
+    private void acknowledgePurchaseWithRetry(@NonNull PurchaseInfo purchaseInfo, int retryCount, int maxRetries, AcknowledgeEventListener listener) {
+        if (retryCount >= maxRetries) {
+            Log("Max retries reached for acknowledgment: " + purchaseInfo.getProduct());
+            listener.onFailure();
+            return;
+        }
+
+        long delayMs = Math.min(INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, retryCount), MAX_RETRY_DELAY_MS);
+
+        AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
+                .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken())
+                .build();
+
+        billingClient.acknowledgePurchase(params, billingResult -> {
+            if (billingResult.getResponseCode() == OK) {
+                Log("Acknowledgment successful for: " + purchaseInfo.getProduct());
+                listener.onSuccess();
+            } else {
+                Log("Acknowledgment failed (attempt " + (retryCount + 1) +
+                        "/" + maxRetries + ") for: " + purchaseInfo.getProduct() +
+                        " - " + billingResult.getDebugMessage());
+
+                findUiHandler().postDelayed(() -> acknowledgePurchaseWithRetry(purchaseInfo, retryCount + 1, maxRetries, listener), delayMs);
+            }
+        });
+    }
+
+    /**
+     * Consumes a purchase with retry logic
+     *
+     * @param purchaseInfo - the purchase to consume
+     * @param retryCount   - current retry attempt
+     * @param maxRetries   - maximum number of retries
+     * @param listener     - to handle success/failure
+     */
+    private void consumeWithRetry(@NonNull PurchaseInfo purchaseInfo, int retryCount, int maxRetries, @NonNull ConsumeEventListener listener) {
+        if (retryCount >= maxRetries) {
+            Log("Max consume retries reached for: " + purchaseInfo.getProduct());
+            listener.onFailure();
+            return;
+        }
+
+        long delayMs = Math.min(INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, retryCount), MAX_RETRY_DELAY_MS);
+
+        ConsumeParams params = ConsumeParams.newBuilder()
+                .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken())
+                .build();
+
+        billingClient.consumeAsync(params, (billingResult, purchaseToken) -> {
+            if (billingResult.getResponseCode() == OK) {
+                Log("Consume success for: " + purchaseInfo.getProduct());
+                listener.onSuccess();
+            } else {
+                Log("Consume failed (attempt " + (retryCount + 1) +
+                        "/" + maxRetries + "): " + billingResult.getDebugMessage());
+
+                findUiHandler().postDelayed(() -> consumeWithRetry(purchaseInfo, retryCount + 1, maxRetries, listener), delayMs);
+            }
+        });
+    }
+
+    /**
+     * Handles a completed purchase (state changed from PENDING to PURCHASED)
+     * Includes consume & acknowledgment retry logic with strict state validation
+     */
+    private void handleCompletedPurchase(@NonNull PurchaseInfo originalInfo, @NonNull Purchase completedPurchase) {
+        // Initial state verification
+        if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
+            Log("Attempted to handle NON-PURCHASED item: " + completedPurchase.getPurchaseState() +
+                    " for product: " + originalInfo.getProduct());
+            return;
+        }
+
+        // Verify purchase token matches
+        if (!completedPurchase.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
+            Log("Purchase token mismatch for product: " + originalInfo.getProduct());
+            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
+                    new BillingResponse(ErrorType.DEVELOPER_ERROR, "Purchase verification failed", defaultResponseCode)));
+            return;
+        }
+
+        //synchronized block for thread-safe processing
+        synchronized (purchasedProductsSync) {
+            //re-verify state after synchronization
+            if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
+                Log("Purchase state changed during processing: " +
+                        completedPurchase.getPurchaseState() +
+                        " for product: " + originalInfo.getProduct());
+                return;
+            }
+
+            PurchaseInfo completedPurchaseInfo = new PurchaseInfo(originalInfo.getProductInfo(), completedPurchase);
+
+            //process the completed purchase
+            processPurchases(
+                    originalInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ?
+                            ProductType.SUBS : ProductType.INAPP,
+                    Collections.singletonList(completedPurchase),
+                    false
+            );
+
+            //handle auto-consume for consumables
+            if (shouldAutoConsume && originalInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
+                consumeWithRetry(completedPurchaseInfo, 0, 3, new ConsumeEventListener() {
+                    @Override
+                    public void onSuccess() {
+                        synchronized (purchasedProductsSync) {
+                            purchasedProductsList.remove(completedPurchaseInfo);
+                        }
+                        findUiHandler().post(() ->
+                                billingEventListener.onPurchaseConsumed(completedPurchaseInfo));
+                    }
+
+                    @Override
+                    public void onFailure() {
+                        handleConsumeFailure(completedPurchaseInfo);
+                    }
+                });
+            }
+            //handle auto-acknowledge for non-consumables and subscriptions
+            else if (shouldAutoAcknowledge && !completedPurchase.isAcknowledged()) {
+                acknowledgePurchaseWithRetry(completedPurchaseInfo, 0, 3, new AcknowledgeEventListener() {
+                    @Override
+                    public void onSuccess() {
+                        findUiHandler().post(() ->
+                                billingEventListener.onPurchaseAcknowledged(completedPurchaseInfo));
+                    }
+
+                    @Override
+                    public void onFailure() {
+                        handleAcknowledgeFailure(completedPurchaseInfo);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Calculates the next retry delay using exponential backoff
+     *
+     * @param retryCount - current number of retry attempts
+     * @return delay in milliseconds before next retry attempt
+     */
+    private long calculateRetryDelay(int retryCount) {
+        return Math.min(INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, retryCount), MAX_RETRY_DELAY_MS);
+    }
+
+    /**
+     * Determines if pending purchase retries should stop based on retry count and duration
+     *
+     * @param purchaseInfo - the purchase being retried
+     * @param retryCount   - current number of retry attempts
+     * @param startTime    - timestamp when retries began (in milliseconds)
+     * @return true if retries should stop, false otherwise
+     */
+    private boolean shouldStopRetrying(PurchaseInfo purchaseInfo, int retryCount, long startTime) {
+        if (retryCount >= MAX_PENDING_RETRIES) {
+            Log("Max retry attempts reached for: " + purchaseInfo.getProduct());
+            return true;
+        }
+
+        if (System.currentTimeMillis() - startTime > MAX_PENDING_DURATION_MS) {
+            Log("Max retry duration exceeded for: " + purchaseInfo.getProduct());
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Handles consumption failure events after all retry attempts are exhausted
+     *
+     * @param purchaseInfo - contains details about the purchase that failed consumption
+     */
+    private void handleConsumeFailure(@NonNull PurchaseInfo purchaseInfo) {
+        Log("Consume failed for: " + purchaseInfo.getProduct());
+        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CONSUME_ERROR,
+                "Failed to consume  purchase", defaultResponseCode)));
+    }
+
+    /**
+     * Handles acknowledgment failure events after all retry attempts are exhausted
+     *
+     * @param purchaseInfo - contains details about the purchase that failed acknowledgment
+     */
+    private void handleAcknowledgeFailure(@NonNull PurchaseInfo purchaseInfo) {
+        Log("Acknowledge failed for: " + purchaseInfo.getProduct());
+        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR,
+                "Failed to acknowledge purchase", defaultResponseCode)));
+    }
+
+    /**
+     * Handles failure case when max retries for a pending purchase are reached
+     * <p>
+     * Removes the failed purchase from the purchased products list and notifies listener
+     *
+     * @param purchaseInfo - the purchase that failed to complete
+     */
+    private void handleRetryFailure(@NonNull PurchaseInfo purchaseInfo) {
+        Log("Max retries reached for pending purchase: " + purchaseInfo.getProduct());
+
+        //synchronize access when removing failed purchase
+        synchronized (purchasedProductsSync) {
+            purchasedProductsList.removeIf(p ->
+                    p.getPurchase().getPurchaseToken()
+                            .equals(purchaseInfo.getPurchase().getPurchaseToken()));
+        }
+
+        notifyBillingError(ErrorType.PENDING_PURCHASE_RETRY_ERROR,
+                "Pending purchase still not completed after " + MAX_PENDING_RETRIES + " retries");
+    }
+
+    /**
+     * Notifies billing event listener about an error on the UI thread
+     *
+     * @param errorType - type of error that occurred
+     * @param message   - descriptive error message
+     */
+    private void notifyBillingError(ErrorType errorType, String message) {
+        findUiHandler().post(() -> {
+            if (billingEventListener != null) {
+                billingEventListener.onBillingError(BillingConnector.this,
+                        new BillingResponse(errorType, message, defaultResponseCode));
+            }
+        });
+    }
+
 
     /**
      * Called to purchase a subscription with offers
@@ -819,9 +1143,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * @param productId - is the subscription product ID to check
      */
     public boolean isSubscriptionActive(String productId) {
-        for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-            if (purchaseInfo.getProduct().equals(productId))
-                return purchaseInfo.getPurchase().isAutoRenewing();
+        synchronized (purchasedProductsSync) {
+            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                if (purchaseInfo.getProduct().equals(productId))
+                    return purchaseInfo.getPurchase().isAutoRenewing();
+            }
         }
         return false;
     }
@@ -835,9 +1161,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * @param productId - is the product ID to check
      */
     public boolean isPurchasePending(String productId) {
-        for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-            if (purchaseInfo.getProduct().equals(productId))
-                return purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING;
+        synchronized (purchasedProductsSync) {
+            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                if (purchaseInfo.getProduct().equals(productId))
+                    return purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING;
+            }
         }
         return false;
     }
@@ -862,6 +1190,15 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
+     * Returns a list of all purchased products.
+     */
+    public List<PurchaseInfo> getPurchasedProductsList() {
+        synchronized (purchasedProductsSync) {
+            return List.copyOf(purchasedProductsList);
+        }
+    }
+
+    /**
      * Checks purchase state synchronously
      */
     public final PurchasedResult isPurchased(@NonNull ProductInfo productInfo) {
@@ -874,9 +1211,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
         } else if (!fetchedPurchasedProducts) {
             return PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET;
         } else {
-            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                if (purchaseInfo.getProduct().equals(productId)) {
-                    return PurchasedResult.YES;
+            synchronized (purchasedProductsSync) {
+                for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                    if (purchaseInfo.getProduct().equals(productId)) {
+                        return PurchasedResult.YES;
+                    }
                 }
             }
             return PurchasedResult.NO;
@@ -914,7 +1253,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * <p>
      * To avoid leaks this method should be called when BillingConnector is no longer needed
      */
-    private void release() {
+    public void release() {
         if (billingClient != null && billingClient.isReady()) {
             Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
