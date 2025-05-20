@@ -338,6 +338,10 @@ class KotlinSampleActivity : AppCompatActivity() {
                         //TODO - failure to consume since item is not owned
                     }
 
+                    ErrorType.PLAY_STORE_NOT_INSTALLED -> {
+                        //TODO - Google Play Store is not installed
+                    }
+
                     else -> {
                         Log.d("BillingConnector", "None of the above ErrorType match")
                     }
