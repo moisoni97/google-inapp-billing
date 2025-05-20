@@ -19,6 +19,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -281,8 +282,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     public final BillingConnector connect() {
         if (!isPlayStoreInstalled(context)) {
             findUiHandler().post(() -> billingEventListener.onBillingError(
-                    BillingConnector.this,
-                    new BillingResponse(ErrorType.BILLING_UNAVAILABLE, "Google Play Store is not installed", BILLING_UNAVAILABLE)));
+                    BillingConnector.this, new BillingResponse(ErrorType.PLAY_STORE_NOT_INSTALLED,
+                            "Google Play Store is not installed", BILLING_UNAVAILABLE)));
             return this;
         }
 
@@ -1175,14 +1176,29 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Verifies if Google Play Store is installed on the device
+     * Checks if Google Play Store is installed on the device using a two-step verification:
+     * 1. Checks for the Play Store package ("com.android.vending")
+     * 2. Verifies if any app can handle Play Store URLs (fallback)
      * <p>
-     * This is required for all in-app billing operations
+     * Will trigger both PLAY_STORE_NOT_INSTALLED and BILLING_UNAVAILABLE
      *
-     * @param context - is the application context
-     * @throws IllegalArgumentException if context is null
+     * @param context - the application context
+     * @return true if Play Store is installed, false otherwise
      */
     public boolean isPlayStoreInstalled(@NonNull Context context) {
+        if (isPlayStoreInstalledByPackage(context)) {
+            return true;
+        }
+        return canHandlePlayStoreUrl(context);
+    }
+
+    /**
+     * Checks if Google Play Store is installed by verifying the existence of its package
+     *
+     * @param context - the application context
+     * @return true if Play Store package exists, false otherwise
+     */
+    private boolean isPlayStoreInstalledByPackage(@NonNull Context context) {
         try {
             PackageManager pm = context.getPackageManager();
             pm.getPackageInfo("com.android.vending", PackageManager.GET_ACTIVITIES);
@@ -1191,6 +1207,26 @@ public class BillingConnector implements DefaultLifecycleObserver {
             Log("Google Play Store is not installed");
             return false;
         }
+    }
+
+    /**
+     * Checks if any app (ideally Play Store) can handle Play Store URLs as a fallback verification
+     *
+     * @param context - the application context
+     * @return true if an app can handle Play Store URLs and is the actual Play Store, false otherwise
+     */
+    private boolean canHandlePlayStoreUrl(@NonNull Context context) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store"));
+        PackageManager pm = context.getPackageManager();
+        ResolveInfo resolveInfo = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+
+        if (resolveInfo == null) {
+            Log("Google Play Store is not installed");
+            return false;
+        }
+
+        //verify if the resolver is actually the Play Store
+        return "com.android.vending".equals(resolveInfo.activityInfo.packageName);
     }
 
     /**

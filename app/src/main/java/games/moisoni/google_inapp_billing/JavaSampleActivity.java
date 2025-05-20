@@ -287,6 +287,9 @@ public class JavaSampleActivity extends AppCompatActivity {
                     case ITEM_NOT_OWNED:
                         //TODO - failure to consume since item is not owned
                         break;
+                    case PLAY_STORE_NOT_INSTALLED:
+                        //TODO - Google Play Store is not installed
+                        break;
                 }
 
                 Log.d("BillingConnector", "Error type: " + response.getErrorType() +
