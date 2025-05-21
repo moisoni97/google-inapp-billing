@@ -268,12 +268,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (!isReady()) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
                     "Client is not ready yet", defaultResponseCode)));
+            return false;
         } else if (productId != null && fetchedProductInfoList.stream().noneMatch(it -> it.getProduct().equals(productId))) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
                     "The product id: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
-        } else return isReady();
-
-        return false;
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -345,8 +346,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                 @Override
                 public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
-                    isConnected = false;
-
                     switch (billingResult.getResponseCode()) {
                         case OK:
                             isConnected = true;
@@ -415,14 +414,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             throw new IllegalStateException("Product type is not implemented");
                     }
 
-                    List<String> fetchedProductIds = fetchedProductInfo.stream().map(ProductInfo::getProduct).collect(Collectors.toList());
-                    List<String> productListIds = productList.stream().map(QueryProductDetailsParams.Product::zza).collect(Collectors.toList()); //according to the documentation "zza" is the product id
-                    boolean isFetched = fetchedProductIds.stream().anyMatch(productListIds::contains);
-
-                    if (isFetched) {
-                        fetchPurchasedProducts();
-                    }
-
+                    fetchPurchasedProducts();
                 }
             } else {
                 Log("Query Product Details: failed");
@@ -779,7 +771,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return;
         }
 
-        // Synchronize the entire check to prevent races
+        //synchronize the entire check to prevent races
         PurchaseInfo pendingPurchase;
         synchronized (purchasedProductsSync) {
             pendingPurchase = purchasedProductsList.stream()
@@ -952,23 +944,27 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Includes consume & acknowledgment retry logic with strict state validation
      */
     private void handleCompletedPurchase(@NonNull PurchaseInfo originalInfo, @NonNull Purchase completedPurchase) {
-        // Initial state verification
+        //initial state verification
         if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
             Log("Attempted to handle NON-PURCHASED item: " + completedPurchase.getPurchaseState() +
                     " for product: " + originalInfo.getProduct());
             return;
         }
 
-        // Verify purchase token matches
+        //verify purchase token matches
         if (!completedPurchase.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
             Log("Purchase token mismatch for product: " + originalInfo.getProduct());
-            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
-                    "Purchase verification failed", defaultResponseCode)));
+            notifyBillingError(ErrorType.DEVELOPER_ERROR, "Purchase verification failed");
             return;
         }
 
         //synchronized block for thread-safe processing
         synchronized (purchasedProductsSync) {
+            //ensure original pending entry is removed when a pending purchase completes
+            purchasedProductsList.removeIf(purchaseInfo ->
+                    purchaseInfo.getPurchase().getPurchaseToken()
+                            .equals(originalInfo.getPurchase().getPurchaseToken()) && purchaseInfo.isPending());
+
             //re-verify state after synchronization
             if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
                 Log("Purchase state changed during processing: " +
@@ -1150,7 +1146,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
             intent.setData(Uri.parse(subscriptionUrl));
 
             activity.startActivity(intent);
-            activity.finish();
         } catch (Exception e) {
             Log("Handling subscription cancellation: error while trying to unsubscribe");
             e.printStackTrace(System.err);
