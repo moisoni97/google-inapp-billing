@@ -281,9 +281,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public final BillingConnector connect() {
         if (!isPlayStoreInstalled(context)) {
-            findUiHandler().post(() -> billingEventListener.onBillingError(
-                    BillingConnector.this, new BillingResponse(ErrorType.PLAY_STORE_NOT_INSTALLED,
-                            "Google Play Store is not installed", BILLING_UNAVAILABLE)));
+            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PLAY_STORE_NOT_INSTALLED,
+                    "Google Play Store is not installed", BILLING_UNAVAILABLE)));
             return this;
         }
 
@@ -427,7 +426,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 }
             } else {
                 Log("Query Product Details: failed");
-                findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
+                findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
+                        new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
             }
         });
     }
@@ -582,8 +582,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         if (purchasedProductsFetched) {
-            fetchedPurchasedProducts = true;
             findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(productType, signatureValidPurchases));
+            fetchedPurchasedProducts = true;
         } else {
             findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
         }
@@ -690,21 +690,35 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void purchase(Activity activity, String productId, int selectedOfferIndex) {
         if (checkProductBeforeInteraction(productId)) {
-            Optional<ProductInfo> productInfo = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(productId)).findFirst();
-            if (productInfo.isPresent()) {
-                ProductDetails productDetails = productInfo.get().getProductDetails();
+            Optional<ProductInfo> productInfoOptional = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(productId)).findFirst();
+            if (productInfoOptional.isPresent()) {
+                ProductInfo productInfo = productInfoOptional.get();
+                ProductDetails productDetails = productInfo.getProductDetails();
                 ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
-                if (productDetails.getProductType().equals(SUBS) && productDetails.getSubscriptionOfferDetails() != null) {
-                    //the offer index represents the different offers in the subscription
-                    //offer index is only available for subscriptions starting with Google Billing v5+
-                    productDetailsParamsList = ImmutableList.of(
-                            BillingFlowParams.ProductDetailsParams.newBuilder()
-                                    .setProductDetails(productDetails)
-                                    .setOfferToken(productDetails.getSubscriptionOfferDetails().get(selectedOfferIndex).getOfferToken())
-                                    .build()
-                    );
-                } else {
+                if (productDetails.getProductType().equals(SUBS)) {
+                    List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
+                    if (offerDetails != null && selectedOfferIndex >= 0 && selectedOfferIndex < offerDetails.size()) {
+                        //the offer index represents the different offers in the subscription
+                        //offer index is only available for subscriptions starting with Google Billing v5+
+                        productDetailsParamsList = ImmutableList.of(
+                                BillingFlowParams.ProductDetailsParams.newBuilder()
+                                        .setProductDetails(productDetails)
+                                        .setOfferToken(offerDetails.get(selectedOfferIndex).getOfferToken())
+                                        .build()
+                        );
+                    }
+                    //handle invalid selectedOfferIndex for subscriptions
+                    else {
+                        Log("Invalid selectedOfferIndex: " + selectedOfferIndex + " for product: " + productId +
+                                ". Offer details size: " + (offerDetails != null ? offerDetails.size() : "null"));
+                        findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                                "Invalid subscription offer index provided", defaultResponseCode)));
+                        return; //prevent proceeding with an invalid index
+                    }
+                }
+                //handle IN-APP products (consumable or non-consumable)
+                else {
                     productDetailsParamsList = ImmutableList.of(
                             BillingFlowParams.ProductDetailsParams.newBuilder()
                                     .setProductDetails(productDetails)
@@ -718,7 +732,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                 billingClient.launchBillingFlow(activity, billingFlowParams);
             } else {
-                Log("Billing client can not launch billing flow because product details are missing");
+                Log("Billing client can not launch billing flow because product details are missing for product: " + productId);
+                findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
+                        "Product details not found for " + productId, defaultResponseCode)));
             }
         }
     }
@@ -946,8 +962,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
         // Verify purchase token matches
         if (!completedPurchase.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
             Log("Purchase token mismatch for product: " + originalInfo.getProduct());
-            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
-                    new BillingResponse(ErrorType.DEVELOPER_ERROR, "Purchase verification failed", defaultResponseCode)));
+            findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Purchase verification failed", defaultResponseCode)));
             return;
         }
 
