@@ -7,7 +7,6 @@ import com.android.billingclient.api.ProductDetails;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import games.moisoni.google_iab.enums.SkuProductType;
 
@@ -33,22 +32,24 @@ public class ProductInfo {
         this.title = productDetails.getTitle();
         this.type = productDetails.getProductType();
         this.name = productDetails.getName();
-        this.oneTimePurchaseOfferFormattedPrice = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
-                .map(ProductDetails.OneTimePurchaseOfferDetails::getFormattedPrice)
-                .orElse(null);
-        this.oneTimePurchaseOfferPriceAmountMicros = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
-                .map(ProductDetails.OneTimePurchaseOfferDetails::getPriceAmountMicros)
-                .orElse(0L);
-        this.oneTimePurchaseOfferPriceCurrencyCode = Optional.ofNullable(productDetails.getOneTimePurchaseOfferDetails())
-                .map(ProductDetails.OneTimePurchaseOfferDetails::getPriceCurrencyCode)
-                .orElse(null);
+
+        ProductDetails.OneTimePurchaseOfferDetails offerDetails = productDetails.getOneTimePurchaseOfferDetails();
+        if (offerDetails != null) {
+            this.oneTimePurchaseOfferFormattedPrice = offerDetails.getFormattedPrice();
+            this.oneTimePurchaseOfferPriceAmountMicros = offerDetails.getPriceAmountMicros();
+            this.oneTimePurchaseOfferPriceCurrencyCode = offerDetails.getPriceCurrencyCode();
+        } else {
+            this.oneTimePurchaseOfferFormattedPrice = null;
+            this.oneTimePurchaseOfferPriceAmountMicros = 0L;
+            this.oneTimePurchaseOfferPriceCurrencyCode = null;
+        }
 
         List<ProductDetails.SubscriptionOfferDetails> offerDetailsList = productDetails.getSubscriptionOfferDetails();
         this.subscriptionOfferDetails = new ArrayList<>();
 
         if (offerDetailsList != null) {
-            for (ProductDetails.SubscriptionOfferDetails offerDetails : offerDetailsList) {
-                SubscriptionOfferDetails newOfferDetails = createSubscriptionOfferDetails(offerDetails);
+            for (ProductDetails.SubscriptionOfferDetails details : offerDetailsList) {
+                SubscriptionOfferDetails newOfferDetails = createSubscriptionOfferDetails(details);
                 this.subscriptionOfferDetails.add(newOfferDetails);
             }
         }

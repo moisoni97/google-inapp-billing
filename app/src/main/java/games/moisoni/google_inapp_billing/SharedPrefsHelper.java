@@ -5,12 +5,14 @@ import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
+import androidx.annotation.NonNull;
+
 public final class SharedPrefsHelper {
 
     private static final String DEFAULT_SUFFIX = "_preferences";
     private static SharedPreferences mPrefs;
 
-    private static void initPrefs(Context context, String prefsName, int mode) {
+    private static void initPrefs(@NonNull Context context, String prefsName, int mode) {
         mPrefs = context.getSharedPreferences(prefsName, mode);
     }
 
