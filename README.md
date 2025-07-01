@@ -24,7 +24,7 @@ It is recommended to implement the `BillingConnector` instance in your MainActiv
 
 This is necessary because sometimes (due to different reasons) the purchase is not instantly processed and will have a `PENDING` state. All `PENDING` state purchases cannot be `acknowledged` or `consumed` and **will be refunded** by Google after 3 days.
 
-The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with**, it will never receive the `Billing API callback` to update the purchase status and the user will lose the purchase.
+The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with (or not at all)**, it will never receive the `Billing API callback` to acknowledge the new updated purchase status and the user will lose the purchase.
 
 The library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks to let you know that the purchase status is still `PENDING`. Here you can inform the user to wait or to come back a little bit later to receive the purchase.
 
@@ -91,7 +91,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.5'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.6'
 }
 ```
 
@@ -100,27 +100,6 @@ dependencies {
 ```xml
   <uses-permission android:name="com.android.vending.BILLING" />
 ```
-
-# Important Notice
-
-* For builds that use `minSdkVersion` lower than `24` it is very important to include the following in your app's build.gradle file:
-
-```gradle
-android {
-  compileOptions {
-    coreLibraryDesugaringEnabled true
-
-    sourceCompatibility JavaVersion.VERSION_17
-    targetCompatibility JavaVersion.VERSION_17
-  }
-}
-
-dependencies {
-  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
-}
-```
-
-This step is required to enable support for some APIs on lower SDK versions that aren't available natively only starting from `minSdkVersion 24`.
 
 # Usage
 

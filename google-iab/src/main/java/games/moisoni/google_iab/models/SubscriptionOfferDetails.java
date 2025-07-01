@@ -6,6 +6,7 @@ import com.android.billingclient.api.ProductDetails;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SubscriptionOfferDetails {
 
@@ -57,9 +58,77 @@ public class SubscriptionOfferDetails {
                 pricingPhase.getBillingPeriod(), pricingPhase.getBillingCycleCount(), pricingPhase.getRecurrenceMode());
     }
 
-    public record PricingPhases(String formattedPrice, long priceAmountMicros,
-                                String priceCurrencyCode, String billingPeriod,
-                                int billingCycleCount, int recurrenceMode) {
+    public static final class PricingPhases {
 
+        private final String formattedPrice;
+        private final long priceAmountMicros;
+        private final String priceCurrencyCode;
+        private final String billingPeriod;
+        private final int billingCycleCount;
+        private final int recurrenceMode;
+
+        public PricingPhases(String formattedPrice, long priceAmountMicros, String priceCurrencyCode, String billingPeriod, int billingCycleCount, int recurrenceMode) {
+            this.formattedPrice = formattedPrice;
+            this.priceAmountMicros = priceAmountMicros;
+            this.priceCurrencyCode = priceCurrencyCode;
+            this.billingPeriod = billingPeriod;
+            this.billingCycleCount = billingCycleCount;
+            this.recurrenceMode = recurrenceMode;
+        }
+
+        public String getFormattedPrice() {
+            return formattedPrice;
+        }
+
+        public long getPriceAmountMicros() {
+            return priceAmountMicros;
+        }
+
+        public String getPriceCurrencyCode() {
+            return priceCurrencyCode;
+        }
+
+        public String getBillingPeriod() {
+            return billingPeriod;
+        }
+
+        public int getBillingCycleCount() {
+            return billingCycleCount;
+        }
+
+        public int getRecurrenceMode() {
+            return recurrenceMode;
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) return true;
+            if (object == null || getClass() != object.getClass()) return false;
+            PricingPhases that = (PricingPhases) object;
+            return priceAmountMicros == that.priceAmountMicros &&
+                    billingCycleCount == that.billingCycleCount &&
+                    recurrenceMode == that.recurrenceMode &&
+                    Objects.equals(formattedPrice, that.formattedPrice) &&
+                    Objects.equals(priceCurrencyCode, that.priceCurrencyCode) &&
+                    Objects.equals(billingPeriod, that.billingPeriod);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(formattedPrice, priceAmountMicros, priceCurrencyCode, billingPeriod, billingCycleCount, recurrenceMode);
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return "PricingPhases[" +
+                    "formattedPrice='" + formattedPrice + '\'' +
+                    ", priceAmountMicros=" + priceAmountMicros +
+                    ", priceCurrencyCode='" + priceCurrencyCode + '\'' +
+                    ", billingPeriod='" + billingPeriod + '\'' +
+                    ", billingCycleCount=" + billingCycleCount +
+                    ", recurrenceMode=" + recurrenceMode +
+                    ']';
+        }
     }
 }
