@@ -26,13 +26,6 @@ android {
         }
     }
 
-    compileOptions {
-        coreLibraryDesugaringEnabled true
-
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
     publishing {
         singleVariant("release") {
             withSourcesJar()
@@ -54,7 +47,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.moisoni97'
                 artifactId = 'google-inapp-billing'
-                version = '1.1.5'
+                version = '1.1.6'
             }
         }
     }
@@ -65,11 +58,9 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
-
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'com.google.guava:guava:33.3.1-android'
+    implementation 'com.google.guava:guava:33.4.8-android'
 
     implementation 'com.android.billingclient:billing:7.1.1'
 }

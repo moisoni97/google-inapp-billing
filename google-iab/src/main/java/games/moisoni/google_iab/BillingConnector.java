@@ -46,9 +46,9 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import games.moisoni.google_iab.enums.ErrorType;
 import games.moisoni.google_iab.enums.ProductType;
@@ -269,7 +269,19 @@ public class BillingConnector implements DefaultLifecycleObserver {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
                     "Client is not ready yet", defaultResponseCode)));
             return false;
-        } else if (productId != null && fetchedProductInfoList.stream().noneMatch(it -> it.getProduct().equals(productId))) {
+        }
+
+        boolean productExists = false;
+        if (productId != null) {
+            for (ProductInfo productInfo : fetchedProductInfoList) {
+                if (productInfo.getProduct().equals(productId)) {
+                    productExists = true;
+                    break;
+                }
+            }
+        }
+
+        if (productId != null && !productExists) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
                     "The product id: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
             return false;
@@ -325,7 +337,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         //check for duplicates product ids
         int allIdsSize = allProductList.size();
-        int allIdsSizeDistinct = (int) allProductList.stream().distinct().count();
+        int allIdsSizeDistinct = new HashSet<>(allProductList).size();
         if (allIdsSize != allIdsSizeDistinct) {
             throw new IllegalArgumentException("The product id must appear only once in a list. Also, it must not be in different lists");
         }
@@ -402,7 +414,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 } else {
                     Log("Query Product Details: data found");
 
-                    List<ProductInfo> fetchedProductInfo = productDetailsList.stream().map(this::generateProductInfo).collect(Collectors.toList());
+                    List<ProductInfo> fetchedProductInfo = new ArrayList<>();
+                    for (ProductDetails productDetails : productDetailsList) {
+                        fetchedProductInfo.add(generateProductInfo(productDetails));
+                    }
                     fetchedProductInfoList.addAll(fetchedProductInfo);
 
                     switch (productType) {
@@ -514,21 +529,23 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public SupportState isSubscriptionSupported() {
         BillingResult response = billingClient.isFeatureSupported(SUBSCRIPTIONS);
+        SupportState state;
 
-        return switch (response.getResponseCode()) {
-            case OK -> {
+        switch (response.getResponseCode()) {
+            case OK:
                 Log("Subscriptions support check: success");
-                yield SupportState.SUPPORTED;
-            }
-            case SERVICE_DISCONNECTED -> {
+                state = SupportState.SUPPORTED;
+                break;
+            case SERVICE_DISCONNECTED:
                 Log("Subscriptions support check: disconnected. Trying to reconnect...");
-                yield SupportState.DISCONNECTED;
-            }
-            default -> {
+                state = SupportState.DISCONNECTED;
+                break;
+            default:
                 Log("Subscriptions support check: error -> " + response.getResponseCode() + " " + response.getDebugMessage());
-                yield SupportState.NOT_SUPPORTED;
-            }
-        };
+                state = SupportState.NOT_SUPPORTED;
+                break;
+        }
+        return state;
     }
 
     /**
@@ -537,21 +554,26 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private void processPurchases(ProductType productType, @NonNull List<Purchase> allPurchases, boolean purchasedProductsFetched) {
         List<PurchaseInfo> signatureValidPurchases = new ArrayList<>();
 
-        List<Purchase> validPurchases = allPurchases.stream()
-                .filter(this::isPurchaseSignatureValid)
-                .collect(Collectors.toList());
+        List<Purchase> validPurchases = new ArrayList<>();
+        for (Purchase purchase : allPurchases) {
+            if (isPurchaseSignatureValid(purchase)) {
+                validPurchases.add(purchase);
+            }
+        }
 
         for (Purchase purchase : validPurchases) {
-            List<String> purchasesProducts = purchase.getProducts();
+            List<String> purchasedProducts = purchase.getProducts();
+            for (String purchaseProduct : purchasedProducts) {
+                ProductInfo foundProductInfo = null;
+                for (ProductInfo productInfo : fetchedProductInfoList) {
+                    if (productInfo.getProduct().equals(purchaseProduct)) {
+                        foundProductInfo = productInfo;
+                        break;
+                    }
+                }
 
-            for (String purchaseProduct : purchasesProducts) {
-                Optional<ProductInfo> productInfo = fetchedProductInfoList.stream()
-                        .filter(it -> it.getProduct().equals(purchaseProduct))
-                        .findFirst();
-
-                if (productInfo.isPresent()) {
-                    ProductDetails productDetails = productInfo.get().getProductDetails();
-
+                if (foundProductInfo != null) {
+                    ProductDetails productDetails = foundProductInfo.getProductDetails();
                     PurchaseInfo purchaseInfo = new PurchaseInfo(generateProductInfo(productDetails), purchase);
                     signatureValidPurchases.add(purchaseInfo);
                 }
@@ -562,11 +584,20 @@ public class BillingConnector implements DefaultLifecycleObserver {
         synchronized (purchasedProductsSync) {
             //clear existing purchases of this type when fetching (to avoid duplicates)
             if (purchasedProductsFetched) {
-                purchasedProductsList.removeIf(purchaseInfo ->
-                        purchaseInfo.getSkuProductType() == (productType == ProductType.SUBS ?
-                                SkuProductType.SUBSCRIPTION :
-                                (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE ?
-                                        SkuProductType.CONSUMABLE : SkuProductType.NON_CONSUMABLE)));
+                Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+                while (iterator.hasNext()) {
+                    PurchaseInfo purchaseInfo = iterator.next();
+                    boolean isSubscription = purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION;
+                    boolean isConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
+
+                    if (productType == ProductType.SUBS && isSubscription) {
+                        iterator.remove();
+                    } else if (productType != ProductType.SUBS) {
+                        if (isConsumable || purchaseInfo.getSkuProductType() == SkuProductType.NON_CONSUMABLE) {
+                            iterator.remove();
+                        }
+                    }
+                }
             }
 
             //add new purchases
@@ -682,10 +713,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void purchase(Activity activity, String productId, int selectedOfferIndex) {
         if (checkProductBeforeInteraction(productId)) {
-            Optional<ProductInfo> productInfoOptional = fetchedProductInfoList.stream().filter(it -> it.getProduct().equals(productId)).findFirst();
-            if (productInfoOptional.isPresent()) {
-                ProductInfo productInfo = productInfoOptional.get();
-                ProductDetails productDetails = productInfo.getProductDetails();
+            ProductInfo foundProductInfo = null;
+            for (ProductInfo productInfo : fetchedProductInfoList) {
+                if (productInfo.getProduct().equals(productId)) {
+                    foundProductInfo = productInfo;
+                    break;
+                }
+            }
+
+            if (foundProductInfo != null) {
+                ProductDetails productDetails = foundProductInfo.getProductDetails();
                 ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
                 if (productDetails.getProductType().equals(SUBS)) {
@@ -739,18 +776,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private boolean verifyPurchaseState(PurchaseInfo purchaseInfo) {
         synchronized (purchasedProductsSync) {
-            boolean stillExists = purchasedProductsList.stream()
-                    .anyMatch(p -> p.getPurchase().getPurchaseToken()
-                            .equals(purchaseInfo.getPurchase().getPurchaseToken()));
-
-            if (!stillExists) {
-                Log("Pending purchase no longer exists: " + purchaseInfo.getProduct());
-                notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
-                        "Pending purchase was removed");
-                return false;
+            for (PurchaseInfo info : purchasedProductsList) {
+                if (info.getPurchase().getPurchaseToken().equals(purchaseInfo.getPurchase().getPurchaseToken())) {
+                    return true;
+                }
             }
         }
-        return true;
+
+        Log("Pending purchase no longer exists: " + purchaseInfo.getProduct());
+        notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
+                "Pending purchase was removed");
+        return false;
     }
 
     /**
@@ -772,12 +808,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         //synchronize the entire check to prevent races
-        PurchaseInfo pendingPurchase;
+        PurchaseInfo pendingPurchase = null;
         synchronized (purchasedProductsSync) {
-            pendingPurchase = purchasedProductsList.stream()
-                    .filter(purchaseInfo -> purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending())
-                    .findFirst()
-                    .orElse(null);
+            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending()) {
+                    pendingPurchase = purchaseInfo;
+                    break;
+                }
+            }
         }
 
         if (pendingPurchase == null || !pendingPurchase.isPending()) {
@@ -850,11 +888,15 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * @param startTime    - timestamp when retries began (in milliseconds)
      */
     private void handlePurchaseQueryResult(PurchaseInfo originalInfo, @NonNull List<Purchase> purchases, int retryCount, long startTime) {
-        Optional<Purchase> completedPurchase = purchases.stream()
-                .filter(p -> p.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken()))
-                .findFirst();
+        Purchase completedPurchase = null;
+        for (Purchase purchase : purchases) {
+            if (purchase.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
+                completedPurchase = purchase;
+                break;
+            }
+        }
 
-        if (!completedPurchase.isPresent()) {
+        if (completedPurchase == null) {
             Log("Pending purchase not found, may have been canceled: " +
                     originalInfo.getProduct());
             notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
@@ -862,9 +904,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return;
         }
 
-        if (completedPurchase.get().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+        if (completedPurchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
             Log("Pending purchase completed: " + originalInfo.getProduct());
-            handleCompletedPurchase(originalInfo, completedPurchase.get());
+            handleCompletedPurchase(originalInfo, completedPurchase);
         } else {
             retryPurchaseWithBackoff(originalInfo, retryCount + 1, startTime);
         }
@@ -961,9 +1003,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
         //synchronized block for thread-safe processing
         synchronized (purchasedProductsSync) {
             //ensure original pending entry is removed when a pending purchase completes
-            purchasedProductsList.removeIf(purchaseInfo ->
-                    purchaseInfo.getPurchase().getPurchaseToken()
-                            .equals(originalInfo.getPurchase().getPurchaseToken()) && purchaseInfo.isPending());
+            Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+            while (iterator.hasNext()) {
+                PurchaseInfo purchaseInfo = iterator.next();
+                if (purchaseInfo.getPurchase().getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken()) && purchaseInfo.isPending()) {
+                    iterator.remove();
+                    break;
+                }
+            }
 
             //re-verify state after synchronization
             if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
@@ -1085,9 +1132,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         //synchronize access when removing failed purchase
         synchronized (purchasedProductsSync) {
-            purchasedProductsList.removeIf(p ->
-                    p.getPurchase().getPurchaseToken()
-                            .equals(purchaseInfo.getPurchase().getPurchaseToken()));
+            Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+            while (iterator.hasNext()) {
+                PurchaseInfo p = iterator.next();
+                if (p.getPurchase().getPurchaseToken().equals(purchaseInfo.getPurchase().getPurchaseToken())) {
+                    iterator.remove();
+                    break;
+                }
+            }
         }
 
         notifyBillingError(ErrorType.PENDING_PURCHASE_RETRY_ERROR,
