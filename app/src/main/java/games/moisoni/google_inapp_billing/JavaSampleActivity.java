@@ -264,28 +264,31 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - error occurred during initialization / querying product details
                         break;
                     case USER_CANCELED:
-                        //TODO - user pressed back or canceled a dialog
+                        //TODO - transaction was canceled by the user
                         break;
                     case SERVICE_UNAVAILABLE:
-                        //TODO - network connection is down
+                        //TODO - the service is currently unavailable
+                        break;
+                    case NETWORK_ERROR:
+                        //TODO - a network error occurred during the operation
                         break;
                     case BILLING_UNAVAILABLE:
-                        //TODO - billing API version is not supported for the type requested
+                        //TODO - a user billing error occurred during processing
                         break;
                     case ITEM_UNAVAILABLE:
                         //TODO - requested product is not available for purchase
                         break;
                     case DEVELOPER_ERROR:
-                        //TODO - invalid arguments provided to the API
+                        //TODO - error resulting from incorrect usage of the API
                         break;
                     case ERROR:
                         //TODO - fatal error during the API action
                         break;
                     case ITEM_ALREADY_OWNED:
-                        //TODO - failure to purchase since item is already owned
+                        //TODO - the purchase failed because the item is already owned
                         break;
                     case ITEM_NOT_OWNED:
-                        //TODO - failure to consume since item is not owned
+                        //TODO - the requested product is not available for purchase
                         break;
                     case PLAY_STORE_NOT_INSTALLED:
                         //TODO - Google Play Store is not installed

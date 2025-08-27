@@ -140,10 +140,6 @@ class KotlinSampleActivity : AppCompatActivity() {
                         //the other two (INAPP and SUBS) will be triggered when the user actually buys a product
                         //TODO - restore purchases
                     }
-
-                    else -> {
-                        Log.d("BillingConnector", "None of the above ProductType match")
-                    }
                 }
 
                 purchases.forEach {
@@ -307,15 +303,19 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.USER_CANCELED -> {
-                        //TODO - user pressed back or canceled a dialog
+                        //TODO - transaction was canceled by the user
                     }
 
                     ErrorType.SERVICE_UNAVAILABLE -> {
-                        //TODO - network connection is down
+                        //TODO - the service is currently unavailable
+                    }
+
+                    ErrorType.NETWORK_ERROR -> {
+                        //TODO - a network error occurred during the operation
                     }
 
                     ErrorType.BILLING_UNAVAILABLE -> {
-                        //TODO - billing API version is not supported for the type requested
+                        //TODO - a user billing error occurred during processing
                     }
 
                     ErrorType.ITEM_UNAVAILABLE -> {
@@ -323,7 +323,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.DEVELOPER_ERROR -> {
-                        //TODO - invalid arguments provided to the API
+                        //TODO - error resulting from incorrect usage of the API
                     }
 
                     ErrorType.ERROR -> {
@@ -331,11 +331,11 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.ITEM_ALREADY_OWNED -> {
-                        //TODO - item is already owned
+                        //TODO - the purchase failed because the item is already owned
                     }
 
                     ErrorType.ITEM_NOT_OWNED -> {
-                        //TODO - failure to consume since item is not owned
+                        //TODO - the requested product is not available for purchase
                     }
 
                     ErrorType.PLAY_STORE_NOT_INSTALLED -> {
