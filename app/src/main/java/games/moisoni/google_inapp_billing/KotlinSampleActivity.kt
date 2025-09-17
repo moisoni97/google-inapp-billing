@@ -243,6 +243,19 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
             }
 
+            override fun onProductQueryError(
+                productId: String,
+                response: BillingResponse
+            ) {
+                //TODO - do something
+                Log.d("BillingConnector", "Product ID not found: $productId")
+                Toast.makeText(
+                    this@KotlinSampleActivity,
+                    "Product ID not found: $productId",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
             override fun onBillingError(
                 billingConnector: BillingConnector,
                 response: BillingResponse

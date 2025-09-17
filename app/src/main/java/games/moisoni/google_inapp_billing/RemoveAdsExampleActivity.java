@@ -121,6 +121,11 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response) {
+
+            }
+
+            @Override
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
                 switch (response.getErrorType()) {
                     case ACKNOWLEDGE_WARNING:

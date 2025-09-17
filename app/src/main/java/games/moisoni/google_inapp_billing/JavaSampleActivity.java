@@ -216,6 +216,13 @@ public class JavaSampleActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response) {
+                //TODO - do something
+                Log.d("BillingConnector", "Product ID not found: " + productId);
+                Toast.makeText(JavaSampleActivity.this, "Product ID not found: " + productId, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
                 switch (response.getErrorType()) {
                     case CLIENT_NOT_READY:
