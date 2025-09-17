@@ -53,4 +53,13 @@ public interface BillingEventListener {
      * @param response - provides information about the error
      */
     void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response);
+
+    /**
+     * Callback will be triggered when a specific product ID is not found during a query
+     * This is useful for identifying configuration errors in the Play Console
+     *
+     * @param productId - the product ID that was not found
+     * @param response  - provides information about the error
+     */
+    void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response);
 }

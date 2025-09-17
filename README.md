@@ -1,4 +1,4 @@
-# Google In-App Billing Library v7+ [![API](https://img.shields.io/badge/API-21%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=21) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
+# Google In-App Billing Library v8+ [![API](https://img.shields.io/badge/API-21%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=21) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
 A simple implementation of the Android In-App Billing API.
 
 It supports: in-app purchases (both consumable and non-consumable) and subscriptions with a base plan or multiple offers.
@@ -24,7 +24,7 @@ It is recommended to implement the `BillingConnector` instance in your MainActiv
 
 This is necessary because sometimes (due to different reasons) the purchase is not instantly processed and will have a `PENDING` state. All `PENDING` state purchases cannot be `acknowledged` or `consumed` and **will be refunded** by Google after 3 days.
 
-The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with (or not at all)**, it will never receive the `Billing API callback` to acknowledge the new updated purchase status and the user will lose the purchase.
+The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with (or not at all)**, it will never be instantiated to receive the `Billing API callback` to acknowledge the new updated purchase status and the user will lose the purchase.
 
 The library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks to let you know that the purchase status is still `PENDING`. Here you can inform the user to wait or to come back a little bit later to receive the purchase.
 
@@ -91,7 +91,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.6'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.7'
 }
 ```
 
@@ -169,6 +169,15 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
      * Even though onProductsPurchased is triggered when a purchase is successfully made
      * there might be a problem along the way with the payment and the user will be able consume the product
      * without actually paying
+     * */
+  }
+
+  @Override
+  public void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response) {
+    /*Callback after a specific product ID is not found*/
+
+    /*
+     * This is useful for identifying configuration errors in the Play Console
      * */
   }
 

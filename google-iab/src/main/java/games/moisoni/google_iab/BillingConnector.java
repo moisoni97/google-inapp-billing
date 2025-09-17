@@ -46,9 +46,11 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import games.moisoni.google_iab.enums.ErrorType;
@@ -101,6 +103,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private final Object purchasedProductsSync = new Object(); //object for thread safety
 
     private int productDetailsQueriesPending;
+    private int purchaseQueriesPending;
 
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
@@ -429,15 +432,32 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private void queryProductDetails(String productType, List<QueryProductDetailsParams.Product> productList) {
         QueryProductDetailsParams productDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(productList).build();
 
-        billingClient.queryProductDetailsAsync(productDetailsParams, (billingResult, productDetailsList) -> {
+        billingClient.queryProductDetailsAsync(productDetailsParams, (billingResult, productDetailsResult) -> {
             if (billingResult.getResponseCode() == OK) {
-                if (productDetailsList.isEmpty()) {
-                    Log("Query Product Details: data not found. Make sure product ids are configured on Play Console");
+                List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
 
+                HashSet<String> foundProductIds = new HashSet<>();
+                for (ProductDetails details : productDetailsList) {
+                    foundProductIds.add(details.getProductId());
+                }
+
+                for (QueryProductDetailsParams.Product requestedProduct : productList) {
+                    String productId = requestedProduct.zza(); // .zza() gets the product ID string
+                    if (!foundProductIds.contains(productId)) {
+                        Log("Error: Product ID '" + productId + "' not found. " +
+                                "Make sure it is configured correctly in the Play Console");
+                        findUiHandler().post(() -> billingEventListener.onProductQueryError(productId, new BillingResponse(ErrorType.PRODUCT_ID_QUERY_FAILED,
+                                "Product ID '" + productId + "' not found", defaultResponseCode)
+                        ));
+                    }
+                }
+
+                if (productDetailsList.isEmpty()) {
+                    Log("Query Product Details: No valid products found. Make sure product ids are configured on Play Console");
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
-                            "No product found", defaultResponseCode)));
+                            "No products found", defaultResponseCode)));
                 } else {
-                    Log("Query Product Details: data found");
+                    Log("Query Product Details: data found for " + productDetailsList.size() + " products");
 
                     List<ProductInfo> fetchedProductInfo = new ArrayList<>();
                     for (ProductDetails productDetails : productDetailsList) {
@@ -459,7 +479,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     }
                 }
             } else {
-                Log("Query Product Details: failed");
+                Log("Query Product Details: failed with response code: " + billingResult.getResponseCode());
                 findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
                         new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
             }
@@ -507,6 +527,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void fetchPurchasedProducts() {
         if (billingClient.isReady()) {
+            purchaseQueriesPending = 1;
+            if (isSubscriptionSupported() == SupportState.SUPPORTED) {
+                purchaseQueriesPending++;
+            }
+
             billingClient.queryPurchasesAsync(
                     QueryPurchasesParams.newBuilder().setProductType(INAPP).build(),
                     (billingResult, purchases) -> {
@@ -588,20 +613,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
             }
         }
 
-        for (Purchase purchase : validPurchases) {
-            List<String> purchasedProducts = purchase.getProducts();
-            for (String purchaseProduct : purchasedProducts) {
-                ProductInfo foundProductInfo = null;
-                for (ProductInfo productInfo : fetchedProductInfoList) {
-                    if (productInfo.getProduct().equals(purchaseProduct)) {
-                        foundProductInfo = productInfo;
-                        break;
-                    }
-                }
+        Map<String, ProductInfo> productInfoMap = new HashMap<>();
+        for (ProductInfo productInfo : fetchedProductInfoList) {
+            productInfoMap.put(productInfo.getProduct(), productInfo);
+        }
 
+        for (Purchase purchase : validPurchases) {
+            for (String productId : purchase.getProducts()) {
+                ProductInfo foundProductInfo = productInfoMap.get(productId);
                 if (foundProductInfo != null) {
-                    ProductDetails productDetails = foundProductInfo.getProductDetails();
-                    PurchaseInfo purchaseInfo = new PurchaseInfo(generateProductInfo(productDetails), purchase);
+                    PurchaseInfo purchaseInfo = new PurchaseInfo(foundProductInfo, purchase);
                     signatureValidPurchases.add(purchaseInfo);
                 }
             }
@@ -615,14 +636,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 while (iterator.hasNext()) {
                     PurchaseInfo purchaseInfo = iterator.next();
                     boolean isSubscription = purchaseInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION;
-                    boolean isConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
 
                     if (productType == ProductType.SUBS && isSubscription) {
                         iterator.remove();
-                    } else if (productType != ProductType.SUBS) {
-                        if (isConsumable || purchaseInfo.getSkuProductType() == SkuProductType.NON_CONSUMABLE) {
-                            iterator.remove();
-                        }
+                    } else if (productType == ProductType.INAPP && !isSubscription) {
+                        iterator.remove();
+                    } else if (productType == ProductType.COMBINED) {
+                        iterator.remove();
                     }
                 }
             }
@@ -633,7 +653,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         if (purchasedProductsFetched) {
             findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(productType, signatureValidPurchases));
-            fetchedPurchasedProducts = true;
+            if (--purchaseQueriesPending == 0) {
+                fetchedPurchasedProducts = true;
+            }
         } else {
             findUiHandler().post(() -> billingEventListener.onProductsPurchased(signatureValidPurchases));
         }
