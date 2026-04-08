@@ -3,6 +3,10 @@ plugins {
     id 'kotlin-android'
 }
 
+kotlin {
+    jvmToolchain(11)
+}
+
 android {
     namespace 'games.moisoni.google_inapp_billing'
     compileSdkVersion 36
@@ -13,7 +17,7 @@ android {
         targetSdkVersion 36
 
         versionCode 10
-        versionName "1.1.7"
+        versionName "1"
 
         multiDexEnabled true
 
@@ -25,10 +29,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
     }
 }
 
