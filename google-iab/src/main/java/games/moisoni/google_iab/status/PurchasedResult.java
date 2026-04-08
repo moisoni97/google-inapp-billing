@@ -1,4 +1,4 @@
-package games.moisoni.google_iab.enums;
+package games.moisoni.google_iab.status;
 
 public enum PurchasedResult {
     CLIENT_NOT_READY,

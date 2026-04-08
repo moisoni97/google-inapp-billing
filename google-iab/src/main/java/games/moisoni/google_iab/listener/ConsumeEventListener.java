@@ -1,4 +1,4 @@
-package games.moisoni.google_iab.listeners;
+package games.moisoni.google_iab.listener;
 
 /**
  * Listener interface for purchase consumption events.
