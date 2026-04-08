@@ -1,9 +1,9 @@
-package games.moisoni.google_iab.listeners;
+package games.moisoni.google_iab.listener;
 
 /**
  * Listener interface for purchase acknowledgment events
  * <p>
- * Used to receive callbacks when purchase acknowledgment succeeds or fails
+ * Used to receive callbacks when the purchase acknowledgment succeeds or fails
  * after retry attempts. This is particularly useful for tracking the final
  * state of acknowledgment operations that include automatic retry logic
  */

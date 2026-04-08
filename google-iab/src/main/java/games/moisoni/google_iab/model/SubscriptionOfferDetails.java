@@ -1,4 +1,4 @@
-package games.moisoni.google_iab.models;
+package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
 

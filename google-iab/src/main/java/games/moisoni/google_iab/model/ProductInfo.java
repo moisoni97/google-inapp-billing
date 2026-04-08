@@ -1,4 +1,4 @@
-package games.moisoni.google_iab.models;
+package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
 
@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import games.moisoni.google_iab.enums.SkuProductType;
+import games.moisoni.google_iab.type.SkuProductType;
 
 public class ProductInfo {
 

@@ -8,23 +8,22 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.github.hariprasanths.bounceview.BounceView
 import games.moisoni.google_iab.BillingConnector
-import games.moisoni.google_iab.listeners.BillingEventListener
-import games.moisoni.google_iab.enums.ErrorType
-import games.moisoni.google_iab.enums.PurchasedResult
-import games.moisoni.google_iab.enums.ProductType
-import games.moisoni.google_iab.enums.SupportState
-import games.moisoni.google_iab.models.BillingResponse
-import games.moisoni.google_iab.models.ProductInfo
-import games.moisoni.google_iab.models.PurchaseInfo
-
+import games.moisoni.google_iab.listener.BillingEventListener
+import games.moisoni.google_iab.type.ErrorType
+import games.moisoni.google_iab.status.PurchasedResult
+import games.moisoni.google_iab.type.ProductType
+import games.moisoni.google_iab.status.SupportState
+import games.moisoni.google_iab.model.BillingResponse
+import games.moisoni.google_iab.model.ProductInfo
+import games.moisoni.google_iab.model.PurchaseInfo
 
 /**
  * This is a sample app to demonstrate how to implement 'google-inapp-billing' library
  * <p>
  * This standalone app won't work because it's just for reference
  * <p>
- * To see real results, you need to implement the below code into a real project
- * released on Play Console and create your own in-app products ids
+ * To see real results, you need to implement the code below in a real project
+ * released on Play Console and create your own in-app products IDs
  */
 class KotlinSampleActivity : AppCompatActivity() {
 
@@ -53,19 +52,19 @@ class KotlinSampleActivity : AppCompatActivity() {
     }
 
     private fun initializeBillingClient() {
-        //create a list with consumable ids
+        // Create a list with consumable IDs
         val consumableIds = mutableListOf<String>()
         consumableIds.add("consumable_id_1")
         consumableIds.add("consumable_id_2")
         consumableIds.add("consumable_id_3")
 
-        //create a list with non-consumable ids
+        // Create a list with non-consumable IDs
         val nonConsumableIds = mutableListOf<String>()
         nonConsumableIds.add("non_consumable_id_1")
         nonConsumableIds.add("non_consumable_id_2")
         nonConsumableIds.add("non_consumable_id_3")
 
-        //create a list with subscription ids
+        // Create a list with subscription IDs
         val subscriptionIds = mutableListOf<String>()
         subscriptionIds.add("subscription_id_1")
         subscriptionIds.add("subscription_id_2")
@@ -73,16 +72,16 @@ class KotlinSampleActivity : AppCompatActivity() {
 
         billingConnector = BillingConnector(
             this,
-            "license_key",
+            "license_key", // "license_key" - public developer key from Play Console
             lifecycle
-        ) //"license_key" - public developer key from Play Console
-            .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
-            .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
-            .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
-            .autoAcknowledge() //legacy option - better call this. Alternatively purchases can be acknowledge via public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
-            .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via public method consumePurchase(PurchaseInfo purchaseInfo)"
-            .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
-            .connect() //to connect billing client with Play Console
+        )
+            .setConsumableIds(consumableIds) // To set consumable IDs - call only for consumable products
+            .setNonConsumableIds(nonConsumableIds) // To set non-consumable IDs - call only for non-consumable products
+            .setSubscriptionIds(subscriptionIds) // To set subscription IDs - call only for subscription products
+            .autoAcknowledge() // Legacy option - better call this. Alternatively, purchases can be acknowledged via the public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
+            .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via the public method "consumePurchase(PurchaseInfo purchaseInfo)"
+            .enableLogging() // To enable logging for debugging throughout the library - this can be skipped
+            .connect() // To connect the billing client with the Play Console
 
         billingConnector.setBillingEventListener(object :
             BillingEventListener {
@@ -112,9 +111,9 @@ class KotlinSampleActivity : AppCompatActivity() {
                         ).show()
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
 
-                    fetchedProductInfoList.add(productInfo) //check "usefulPublicMethods" to see how to synchronously check a purchase state
+                    fetchedProductInfoList.add(productInfo)
                 }
             }
 
@@ -136,8 +135,8 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ProductType.COMBINED -> {
-                        //this will be triggered on activity start
-                        //the other two (INAPP and SUBS) will be triggered when the user actually buys a product
+                        // This will be triggered on activity start
+                        // The other two (INAPP and SUBS) will be triggered when the user actually buys a product
                         //TODO - restore purchases
                     }
                 }
@@ -154,7 +153,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                             ).show()
                         }
 
-                        //TODO - similarly check for other ids
+                        //TODO - similarly check for other IDs
                     }
                 }
             }
@@ -185,9 +184,9 @@ class KotlinSampleActivity : AppCompatActivity() {
                         ).show()
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
 
-                    purchasedInfoList.add(purchaseInfo) //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
+                    purchasedInfoList.add(purchaseInfo)
                 }
             }
 
@@ -215,7 +214,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                         ).show()
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
                 }
             }
 
@@ -224,7 +223,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * Grant user entitlement for CONSUMABLE products here
                  *
                  * Even though onProductsPurchased is triggered when a purchase is successfully made
-                 * there might be a problem along the way with the payment and the user will be able consume the product
+                 * there might be a problem along the way with the payment and the user will be able to consume the product
                  * without actually paying
                  * */
 
@@ -239,7 +238,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                         ).show()
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
                 }
             }
 
@@ -376,7 +375,7 @@ class KotlinSampleActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        //init purchase buttons
+        // Init purchase buttons
         purchaseConsumable = findViewById(R.id.purchase_consumable)
         purchaseNonConsumable = findViewById(R.id.purchase_non_consumable)
         purchaseSubscription = findViewById(R.id.purchase_subscription)
@@ -384,10 +383,10 @@ class KotlinSampleActivity : AppCompatActivity() {
         purchaseSubscriptionOfferTwo = findViewById(R.id.purchase_subscription_offer_two)
         cancelSubscription = findViewById(R.id.cancel_subscription)
 
-        //init exit app button
+        // Init exit app button
         exitApp = findViewById(R.id.exit_app)
 
-        //add bounce view animation to clickable views
+        // Add bounce view animation to clickable views
         BounceView.addAnimTo(purchaseConsumable)
         BounceView.addAnimTo(purchaseNonConsumable)
         BounceView.addAnimTo(purchaseSubscription)
@@ -398,7 +397,7 @@ class KotlinSampleActivity : AppCompatActivity() {
     }
 
     private fun clickListeners() {
-        //purchase an item
+        // Purchase an item
         purchaseConsumable.setOnClickListener {
             billingConnector.purchase(this, "consumable_id_1")
         }
@@ -406,13 +405,13 @@ class KotlinSampleActivity : AppCompatActivity() {
             billingConnector.purchase(this, "non_consumable_id_2")
         }
 
-        //purchase a subscription without an offer (only a base plan)
+        // Purchase a subscription without an offer (only a base plan)
         purchaseSubscription.setOnClickListener {
             billingConnector.subscribe(this, "subscription_id_1")
         }
 
-        //purchase a subscription with multiple offers
-        //the offer index represents the different offers in the subscription (after Google Billing v5+)
+        // Purchase a subscription with multiple offers
+        // The offer index represents the different offers in the subscription (after Google Billing v5+)
         purchaseSubscriptionOfferOne.setOnClickListener {
             billingConnector.subscribe(this, "subscription_id_2", 0)
         }
@@ -420,12 +419,12 @@ class KotlinSampleActivity : AppCompatActivity() {
             billingConnector.subscribe(this, "subscription_id_2", 1)
         }
 
-        //cancel a subscription
+        // Cancel a subscription
         cancelSubscription.setOnClickListener {
             billingConnector.unsubscribe(this, "subscription_id_3")
         }
 
-        //exit app on button click
+        // Exit app on button click
         exitApp.setOnClickListener {
             finish()
         }

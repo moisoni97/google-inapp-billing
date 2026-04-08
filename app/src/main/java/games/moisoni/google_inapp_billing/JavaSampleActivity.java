@@ -15,22 +15,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import games.moisoni.google_iab.BillingConnector;
-import games.moisoni.google_iab.listeners.BillingEventListener;
-import games.moisoni.google_iab.enums.PurchasedResult;
-import games.moisoni.google_iab.enums.ProductType;
-import games.moisoni.google_iab.enums.SupportState;
-import games.moisoni.google_iab.models.BillingResponse;
-import games.moisoni.google_iab.models.ProductInfo;
-import games.moisoni.google_iab.models.PurchaseInfo;
-
+import games.moisoni.google_iab.listener.BillingEventListener;
+import games.moisoni.google_iab.status.PurchasedResult;
+import games.moisoni.google_iab.type.ProductType;
+import games.moisoni.google_iab.status.SupportState;
+import games.moisoni.google_iab.model.BillingResponse;
+import games.moisoni.google_iab.model.ProductInfo;
+import games.moisoni.google_iab.model.PurchaseInfo;
 
 /**
  * This is a sample app to demonstrate how to implement 'google-inapp-billing' library
  * <p>
  * This standalone app won't work because it's just for reference
  * <p>
- * To see real results, you need to implement the below code into a real project
- * released on Play Console and create your own in-app products ids
+ * To see real results, you need to implement the code below in a real project
+ * released on Play Console and create your own in-app products IDs
  */
 public class JavaSampleActivity extends AppCompatActivity {
 
@@ -39,10 +38,10 @@ public class JavaSampleActivity extends AppCompatActivity {
 
     private BillingConnector billingConnector;
 
-    //list for example purposes to demonstrate how to manually acknowledge or consume purchases
+    // List for example purposes to demonstrate how to manually acknowledge or consume purchases
     private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
 
-    //list for example purposes to demonstrate how to synchronously check a purchase state
+    // List for example purposes to demonstrate how to synchronously check a purchase state
     private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
 
     @Override
@@ -57,32 +56,32 @@ public class JavaSampleActivity extends AppCompatActivity {
     }
 
     private void initializeBillingClient() {
-        //create a list with consumable ids
+        // Create a list with consumable IDs
         List<String> consumableIds = new ArrayList<>();
         consumableIds.add("consumable_id_1");
         consumableIds.add("consumable_id_2");
         consumableIds.add("consumable_id_3");
 
-        //create a list with non-consumable ids
+        // Create a list with non-consumable IDs
         List<String> nonConsumableIds = new ArrayList<>();
         nonConsumableIds.add("non_consumable_id_1");
         nonConsumableIds.add("non_consumable_id_2");
         nonConsumableIds.add("non_consumable_id_3");
 
-        //create a list with subscription ids
+        // Create a list with subscription IDs
         List<String> subscriptionIds = new ArrayList<>();
         subscriptionIds.add("subscription_id_1");
         subscriptionIds.add("subscription_id_2");
         subscriptionIds.add("subscription_id_3");
 
-        billingConnector = new BillingConnector(this, "license_key", getLifecycle()) //"license_key" - public developer key from Play Console
-                .setConsumableIds(consumableIds) //to set consumable ids - call only for consumable products
-                .setNonConsumableIds(nonConsumableIds) //to set non-consumable ids - call only for non-consumable products
-                .setSubscriptionIds(subscriptionIds) //to set subscription ids - call only for subscription products
-                .autoAcknowledge() //legacy option - better call this. Alternatively purchases can be acknowledge via public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
-                .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via public method consumePurchase(PurchaseInfo purchaseInfo)"
-                .enableLogging() //to enable logging for debugging throughout the library - this can be skipped
-                .connect(); //to connect billing client with Play Console
+        billingConnector = new BillingConnector(this, "license_key", getLifecycle()) // "license_key" - public developer key from Play Console
+                .setConsumableIds(consumableIds) // To set consumable IDs - call only for consumable products
+                .setNonConsumableIds(nonConsumableIds) // To set non-consumable IDs - call only for non-consumable products
+                .setSubscriptionIds(subscriptionIds) // To set subscription IDs - call only for subscription products
+                .autoAcknowledge() // Legacy option - better call this. Alternatively, purchases can be acknowledged via the public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
+                .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via the public method "consumePurchase(PurchaseInfo purchaseInfo)"
+                .enableLogging() // To enable logging for debugging throughout the library - this can be skipped
+                .connect(); // To connect the billing client with the Play Console
 
         billingConnector.setBillingEventListener(new BillingEventListener() {
             @Override
@@ -104,9 +103,9 @@ public class JavaSampleActivity extends AppCompatActivity {
                         Toast.makeText(JavaSampleActivity.this, "Product price: " + price, Toast.LENGTH_SHORT).show();
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
 
-                    fetchedProductInfoList.add(productInfo); //check "usefulPublicMethods" to see how to synchronously check a purchase state
+                    fetchedProductInfoList.add(productInfo);
                 }
             }
 
@@ -124,8 +123,8 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - subscription products
                         break;
                     case COMBINED:
-                        //this will be triggered on activity start
-                        //the other two (INAPP and SUBS) will be triggered when the user actually buys a product
+                        // This will be triggered on activity start
+                        // The other two (INAPP and SUBS) will be triggered when the user actually buys a product
                         //TODO - restore purchases
                         break;
                 }
@@ -140,7 +139,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                         Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + product, Toast.LENGTH_SHORT).show();
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
                 }
             }
 
@@ -163,9 +162,9 @@ public class JavaSampleActivity extends AppCompatActivity {
                         Toast.makeText(JavaSampleActivity.this, "Purchase token: " + purchaseToken, Toast.LENGTH_SHORT).show();
                     }
 
-                    //TODO - similarly check for other ids
+                    //TODO - similarly check for other IDs
 
-                    purchasedInfoList.add(purchaseInfo); //check "usefulPublicMethods" to see how to acknowledge or consume a purchase manually
+                    purchasedInfoList.add(purchaseInfo);
                 }
             }
 
@@ -191,7 +190,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                     Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedProduct, Toast.LENGTH_SHORT).show();
                 }
 
-                //TODO - similarly check for other ids
+                //TODO - similarly check for other IDs
             }
 
             @Override
@@ -200,7 +199,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * Grant user entitlement for CONSUMABLE products here
                  *
                  * Even though onProductsPurchased is triggered when a purchase is successfully made
-                 * there might be a problem along the way with the payment and the user will be able consume the product
+                 * there might be a problem along the way with the payment and the user will be able to consume the product
                  * without actually paying
                  * */
 
@@ -212,7 +211,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                     Toast.makeText(JavaSampleActivity.this, "Consumed: " + consumedProduct, Toast.LENGTH_SHORT).show();
                 }
 
-                //TODO - similarly check for other ids
+                //TODO - similarly check for other IDs
             }
 
             @Override
@@ -312,7 +311,7 @@ public class JavaSampleActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        //init purchase buttons
+        // Init purchase buttons
         purchaseConsumable = findViewById(R.id.purchase_consumable);
         purchaseNonConsumable = findViewById(R.id.purchase_non_consumable);
         purchaseSubscription = findViewById(R.id.purchase_subscription);
@@ -320,10 +319,10 @@ public class JavaSampleActivity extends AppCompatActivity {
         purchaseSubscriptionOfferTwo = findViewById(R.id.purchase_subscription_offer_two);
         cancelSubscription = findViewById(R.id.cancel_subscription);
 
-        //init exit app button
+        // Init exit app button
         exitApp = findViewById(R.id.exit_app);
 
-        //add bounce view animation to clickable views
+        // Add bounce view animation to clickable views
         BounceView.addAnimTo(purchaseConsumable);
         BounceView.addAnimTo(purchaseNonConsumable);
         BounceView.addAnimTo(purchaseSubscription);
@@ -334,22 +333,22 @@ public class JavaSampleActivity extends AppCompatActivity {
     }
 
     private void clickListeners() {
-        //purchase an item
+        // Purchase an item
         purchaseConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "consumable_id_1"));
         purchaseNonConsumable.setOnClickListener(v -> billingConnector.purchase(JavaSampleActivity.this, "non_consumable_id_2"));
 
-        //purchase a subscription without an offer (only a base plan)
+        // Purchase a subscription without an offer (only a base plan)
         purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1"));
 
-        //purchase a subscription with multiple offers
-        //the offer index represents the different offers in the subscription (after Google Billing v5+)
+        // Purchase a subscription with multiple offers
+        // The offer index represents the different offers in the subscription (after Google Billing v5+)
         purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 0));
         purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 1));
 
-        //cancel a subscription
+        // Cancel a subscription
         cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id_1"));
 
-        //exit app on button click
+        // Exit app on button click
         exitApp.setOnClickListener(v -> finish());
     }
 

@@ -1,4 +1,4 @@
-package games.moisoni.google_iab.enums;
+package games.moisoni.google_iab.status;
 
 public enum SupportState {
     SUPPORTED,
