@@ -61,7 +61,7 @@ class Security {
             KeyFactory keyFactory = KeyFactory.getInstance(KEY_FACTORY_ALGORITHM);
             return keyFactory.generatePublic(new X509EncodedKeySpec(decodedKey));
         } catch (NoSuchAlgorithmException e) {
-            // "RSA" is guaranteed to be available.
+            // "RSA" is guaranteed to be available
             throw new RuntimeException(e);
         } catch (InvalidKeySpecException e) {
             String msg = "Invalid key specification: " + e;
@@ -98,7 +98,7 @@ class Security {
             }
             return true;
         } catch (NoSuchAlgorithmException e) {
-            // "RSA" is guaranteed to be available.
+            // "RSA" is guaranteed to be available
             throw new RuntimeException(e);
         } catch (InvalidKeyException e) {
             Log.e(TAG, "Invalid key specification.");

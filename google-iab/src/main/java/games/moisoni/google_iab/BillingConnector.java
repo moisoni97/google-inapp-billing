@@ -53,24 +53,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import games.moisoni.google_iab.enums.ErrorType;
-import games.moisoni.google_iab.enums.ProductType;
-import games.moisoni.google_iab.enums.PurchasedResult;
-import games.moisoni.google_iab.enums.SkuProductType;
-import games.moisoni.google_iab.enums.SupportState;
-import games.moisoni.google_iab.listeners.AcknowledgeEventListener;
-import games.moisoni.google_iab.listeners.BillingEventListener;
-import games.moisoni.google_iab.listeners.ConsumeEventListener;
-import games.moisoni.google_iab.models.BillingResponse;
-import games.moisoni.google_iab.models.ProductInfo;
-import games.moisoni.google_iab.models.PurchaseInfo;
+import games.moisoni.google_iab.type.ErrorType;
+import games.moisoni.google_iab.type.ProductType;
+import games.moisoni.google_iab.status.PurchasedResult;
+import games.moisoni.google_iab.type.SkuProductType;
+import games.moisoni.google_iab.status.SupportState;
+import games.moisoni.google_iab.listener.AcknowledgeEventListener;
+import games.moisoni.google_iab.listener.BillingEventListener;
+import games.moisoni.google_iab.listener.ConsumeEventListener;
+import games.moisoni.google_iab.model.BillingResponse;
+import games.moisoni.google_iab.model.ProductInfo;
+import games.moisoni.google_iab.model.PurchaseInfo;
 
 public class BillingConnector implements DefaultLifecycleObserver {
 
     private final Handler uiHandler;
 
     private static final String TAG = "BillingConnector";
-    private static final int defaultResponseCode = 99; //custom response code not used by the official BillingClient API
+    private static final int defaultResponseCode = 99; // Custom response code not used by the official BillingClient API
 
     private static final int notAnOffer = -1;
 
@@ -100,7 +100,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
 
-    private final Object purchasedProductsSync = new Object(); //object for thread safety
+    private final Object purchasedProductsSync = new Object(); // Object for thread safety
 
     private int productDetailsQueriesPending;
     private int purchaseQueriesPending;
@@ -214,7 +214,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * To set consumable products ids
+     * To set consumable products IDs
      */
     public final BillingConnector setConsumableIds(List<String> consumableIds) {
         this.consumableIds = consumableIds;
@@ -222,7 +222,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * To set non-consumable products ids
+     * To set non-consumable products IDs
      */
     public final BillingConnector setNonConsumableIds(List<String> nonConsumableIds) {
         this.nonConsumableIds = nonConsumableIds;
@@ -230,7 +230,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * To set subscription products ids
+     * To set subscription products IDs
      */
     public final BillingConnector setSubscriptionIds(List<String> subscriptionIds) {
         this.subscriptionIds = subscriptionIds;
@@ -279,7 +279,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Returns a boolean state of the product
      *
-     * @param productId - is the product id that has to be checked
+     * @param productId - is the product ID that has to be checked
      */
     private boolean checkProductBeforeInteraction(String productId) {
         if (!isReady()) {
@@ -300,7 +300,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         if (productId != null && !productExists) {
             findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
-                    "The product id: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
+                    "The product ID: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
             return false;
         }
         return true;
@@ -319,7 +319,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
         List<QueryProductDetailsParams.Product> productInAppList = new ArrayList<>();
         List<QueryProductDetailsParams.Product> productSubsList = new ArrayList<>();
 
-        //set empty list to null so we only have to deal with lists that are null or not empty
+        // Set the empty list to null so we only have to deal with lists that are null or not empty
         if (consumableIds == null || consumableIds.isEmpty()) {
             consumableIds = null;
         } else {
@@ -352,16 +352,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (!productSubsList.isEmpty()) queryCount++;
         productDetailsQueriesPending = queryCount;
 
-        //check if any list is provided
+        // Check if any list is provided
         if (allProductList.isEmpty()) {
             throw new IllegalArgumentException("At least one list of consumables, non-consumables or subscriptions is needed");
         }
 
-        //check for duplicates product ids
+        // Check for duplicates product IDs
         int allIdsSize = allProductList.size();
         int allIdsSizeDistinct = new HashSet<>(allProductList).size();
         if (allIdsSize != allIdsSizeDistinct) {
-            throw new IllegalArgumentException("The product id must appear only once in a list. Also, it must not be in different lists");
+            throw new IllegalArgumentException("The product ID must appear only once in a list. Also, it must not be in different lists");
         }
 
         Log("Billing service: connecting...");
@@ -385,12 +385,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             isConnected = true;
                             Log("Billing service: connected");
 
-                            //query consumable and non-consumable product details
+                            // Query consumable and non-consumable product details
                             if (!productInAppList.isEmpty()) {
                                 queryProductDetails(INAPP, productInAppList);
                             }
 
-                            //query subscription product details
+                            // Query subscription product details
                             if (subscriptionIds != null) {
                                 queryProductDetails(SUBS, productSubsList);
                             }
@@ -453,7 +453,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 }
 
                 if (productDetailsList.isEmpty()) {
-                    Log("Query Product Details: No valid products found. Make sure product ids are configured on Play Console");
+                    Log("Query Product Details: No valid products found. Make sure product IDs are configured on Play Console");
                     findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
                             "No products found", defaultResponseCode)));
                 } else {
@@ -549,7 +549,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     }
             );
 
-            //query subscription purchases for supported devices
+            // Query subscription purchases for supported devices
             if (isSubscriptionSupported() == SupportState.SUPPORTED) {
                 billingClient.queryPurchasesAsync(
                         QueryPurchasesParams.newBuilder().setProductType(SUBS).build(),
@@ -628,9 +628,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
             }
         }
 
-        //synchronize access to purchasedProductsList
+        // Synchronize access to purchasedProductsList
         synchronized (purchasedProductsSync) {
-            //clear existing purchases of this type when fetching (to avoid duplicates)
+            // Clear existing purchases of this type when fetching (to avoid duplicates)
             if (purchasedProductsFetched) {
                 Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
                 while (iterator.hasNext()) {
@@ -647,7 +647,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 }
             }
 
-            //add new purchases
+            // Add new purchases
             purchasedProductsList.addAll(signatureValidPurchases);
         }
 
@@ -676,8 +676,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Consume consumable products so that the user can buy the item again
      * <p>
-     * Consumable products might be bought/consumed by users multiple times (for eg. diamonds, coins etc)
-     * They have to be consumed within 3 days otherwise Google will refund the products
+     * Consumable products might be bought/consumed by users multiple times (for e.g. diamonds, coins etc.)
+     * They have to be consumed within 3 days, otherwise Google will refund the products
      */
     public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
@@ -777,8 +777,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 if (productDetails.getProductType().equals(SUBS)) {
                     List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
                     if (offerDetails != null && selectedOfferIndex >= 0 && selectedOfferIndex < offerDetails.size()) {
-                        //the offer index represents the different offers in the subscription
-                        //offer index is only available for subscriptions starting with Google Billing v5+
+                        // The offer index represents the different offers in the subscription
+                        // Offer index is only available for subscriptions starting with Google Billing v5+
                         productDetailsParamsList = ImmutableList.of(
                                 BillingFlowParams.ProductDetailsParams.newBuilder()
                                         .setProductDetails(productDetails)
@@ -786,16 +786,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
                                         .build()
                         );
                     }
-                    //handle invalid selectedOfferIndex for subscriptions
+                    // Handle invalid selectedOfferIndex for subscriptions
                     else {
                         Log("Invalid selectedOfferIndex: " + selectedOfferIndex + " for product: " + productId +
                                 ". Offer details size: " + (offerDetails != null ? offerDetails.size() : "null"));
                         findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
                                 "Invalid subscription offer index provided", defaultResponseCode)));
-                        return; //prevent proceeding with an invalid index
+                        return; // Prevent proceeding with an invalid index
                     }
                 }
-                //handle IN-APP products (consumable or non-consumable)
+                // Handle IN-APP products (consumable or non-consumable)
                 else {
                     productDetailsParamsList = ImmutableList.of(
                             BillingFlowParams.ProductDetailsParams.newBuilder()
@@ -856,7 +856,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return;
         }
 
-        //synchronize the entire check to prevent races
+        // Synchronize the entire check to prevent races
         PurchaseInfo pendingPurchase = null;
         synchronized (purchasedProductsSync) {
             for (PurchaseInfo purchaseInfo : purchasedProductsList) {
@@ -1035,23 +1035,23 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Includes consume & acknowledgment retry logic with strict state validation
      */
     private void handleCompletedPurchase(@NonNull PurchaseInfo originalInfo, @NonNull Purchase completedPurchase) {
-        //initial state verification
+        // Initial state verification
         if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
             Log("Attempted to handle NON-PURCHASED item: " + completedPurchase.getPurchaseState() +
                     " for product: " + originalInfo.getProduct());
             return;
         }
 
-        //verify purchase token matches
+        // Verify the purchase token matches
         if (!completedPurchase.getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
             Log("Purchase token mismatch for product: " + originalInfo.getProduct());
             notifyBillingError(ErrorType.DEVELOPER_ERROR, "Purchase verification failed");
             return;
         }
 
-        //synchronized block for thread-safe processing
+        // Synchronized block for thread-safe processing
         synchronized (purchasedProductsSync) {
-            //ensure original pending entry is removed when a pending purchase completes
+            // Ensure original pending entry is removed when a pending purchase completes
             Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
             while (iterator.hasNext()) {
                 PurchaseInfo purchaseInfo = iterator.next();
@@ -1061,7 +1061,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 }
             }
 
-            //re-verify state after synchronization
+            // Re-verify state after synchronization
             if (completedPurchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) {
                 Log("Purchase state changed during processing: " +
                         completedPurchase.getPurchaseState() +
@@ -1071,7 +1071,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
             PurchaseInfo completedPurchaseInfo = new PurchaseInfo(originalInfo.getProductInfo(), completedPurchase);
 
-            //process the completed purchase
+            // Process the completed purchase
             processPurchases(
                     originalInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ?
                             ProductType.SUBS : ProductType.INAPP,
@@ -1079,7 +1079,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     false
             );
 
-            //handle auto-consume for consumables
+            // Handle auto-consume for consumables
             if (shouldAutoConsume && originalInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 consumeWithRetry(completedPurchaseInfo, 0, 3, new ConsumeEventListener() {
                     @Override
@@ -1097,7 +1097,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     }
                 });
             }
-            //handle auto-acknowledge for non-consumables and subscriptions
+            // Handle auto-acknowledge for non-consumables and subscriptions
             else if (shouldAutoAcknowledge && !completedPurchase.isAcknowledged()) {
                 acknowledgePurchaseWithRetry(completedPurchaseInfo, 0, 3, new AcknowledgeEventListener() {
                     @Override
@@ -1179,7 +1179,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private void handleRetryFailure(@NonNull PurchaseInfo purchaseInfo) {
         Log("Max retries reached for pending purchase: " + purchaseInfo.getProduct());
 
-        //synchronize access when removing failed purchase
+        // Synchronize access when removing failed purchase
         synchronized (purchasedProductsSync) {
             Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
             while (iterator.hasNext()) {
@@ -1335,7 +1335,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return false;
         }
 
-        //verify if the resolver is actually the Play Store
+        // Verify if the resolver is actually the Play Store
         return "com.android.vending".equals(resolveInfo.activityInfo.packageName);
     }
 

@@ -1,10 +1,10 @@
-package games.moisoni.google_iab.models;
+package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
 
 import com.android.billingclient.api.BillingResult;
 
-import games.moisoni.google_iab.enums.ErrorType;
+import games.moisoni.google_iab.type.ErrorType;
 
 public class BillingResponse {
 

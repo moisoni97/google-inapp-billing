@@ -1,14 +1,14 @@
-package games.moisoni.google_iab.listeners;
+package games.moisoni.google_iab.listener;
 
 import androidx.annotation.NonNull;
 
 import java.util.List;
 
 import games.moisoni.google_iab.BillingConnector;
-import games.moisoni.google_iab.enums.ProductType;
-import games.moisoni.google_iab.models.BillingResponse;
-import games.moisoni.google_iab.models.ProductInfo;
-import games.moisoni.google_iab.models.PurchaseInfo;
+import games.moisoni.google_iab.type.ProductType;
+import games.moisoni.google_iab.model.BillingResponse;
+import games.moisoni.google_iab.model.ProductInfo;
+import games.moisoni.google_iab.model.PurchaseInfo;
 
 public interface BillingEventListener {
     /**
