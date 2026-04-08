@@ -37,10 +37,8 @@ android {
             allVariants()
         }
     }
+
     lint {
-        targetSdk 36
-    }
-    testOptions {
         targetSdk 36
     }
 }
@@ -65,7 +63,7 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
-    implementation 'com.google.guava:guava:33.4.8-android'
+    implementation 'com.google.guava:guava:33.5.0-android'
 
-    implementation 'com.android.billingclient:billing:8.0.0'
+    implementation 'com.android.billingclient:billing:8.3.0'
 }
