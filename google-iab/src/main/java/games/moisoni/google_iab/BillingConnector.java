@@ -51,6 +51,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import games.moisoni.google_iab.type.ErrorType;
@@ -97,13 +99,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private final List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
 
-    private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
+    private final List<ProductInfo> fetchedProductInfoList = new CopyOnWriteArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
 
     private final Object purchasedProductsSync = new Object(); // Object for thread safety
 
-    private int productDetailsQueriesPending;
-    private int purchaseQueriesPending;
+    private final AtomicInteger productDetailsQueriesPending = new AtomicInteger(0);
+    private final AtomicInteger purchaseQueriesPending = new AtomicInteger(0);
 
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
@@ -344,13 +346,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
             }
         }
 
+        // Clear the list to prevent duplicates during a reconnection attempt
+        allProductList.clear();
+
         allProductList.addAll(productInAppList);
         allProductList.addAll(productSubsList);
 
         int queryCount = 0;
         if (!productInAppList.isEmpty()) queryCount++;
         if (!productSubsList.isEmpty()) queryCount++;
-        productDetailsQueriesPending = queryCount;
+        productDetailsQueriesPending.set(queryCount);
 
         // Check if any list is provided
         if (allProductList.isEmpty()) {
@@ -384,6 +389,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         case OK:
                             isConnected = true;
                             Log("Billing service: connected");
+
+                            // Reset the reconnect timer on successful connection
+                            reconnectMilliseconds.set(RECONNECT_TIMER_START_MILLISECONDS);
 
                             // Query consumable and non-consumable product details
                             if (!productInAppList.isEmpty()) {
@@ -463,6 +471,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     for (ProductDetails productDetails : productDetailsList) {
                         fetchedProductInfo.add(generateProductInfo(productDetails));
                     }
+
+                    // Clear the list to prevent UI duplicates on reconnect
+                    fetchedProductInfoList.clear();
                     fetchedProductInfoList.addAll(fetchedProductInfo);
 
                     switch (productType) {
@@ -474,7 +485,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             throw new IllegalStateException("Product type is not implemented");
                     }
 
-                    if (--productDetailsQueriesPending == 0) {
+                    if (productDetailsQueriesPending.decrementAndGet() == 0) {
                         fetchPurchasedProducts();
                     }
                 }
@@ -482,6 +493,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 Log("Query Product Details: failed with response code: " + billingResult.getResponseCode());
                 findUiHandler().post(() -> billingEventListener.onBillingError(BillingConnector.this,
                         new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
+
+                // Unblock the pipeline even if this specific query failed (API response code is not OK)
+                if (productDetailsQueriesPending.decrementAndGet() == 0) {
+                    fetchPurchasedProducts();
+                }
             }
         });
     }
@@ -527,10 +543,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void fetchPurchasedProducts() {
         if (billingClient.isReady()) {
-            purchaseQueriesPending = 1;
+            int queryCount = 1;
             if (isSubscriptionSupported() == SupportState.SUPPORTED) {
-                purchaseQueriesPending++;
+                queryCount++;
             }
+            purchaseQueriesPending.set(queryCount);
 
             billingClient.queryPurchasesAsync(
                     QueryPurchasesParams.newBuilder().setProductType(INAPP).build(),
@@ -653,7 +670,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         if (purchasedProductsFetched) {
             findUiHandler().post(() -> billingEventListener.onPurchasedProductsFetched(productType, signatureValidPurchases));
-            if (--purchaseQueriesPending == 0) {
+            if (purchaseQueriesPending.decrementAndGet() == 0) {
                 fetchedPurchasedProducts = true;
             }
         } else {
@@ -1049,6 +1066,15 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return;
         }
 
+        // Verify signature before proceeding
+        if (!isPurchaseSignatureValid(completedPurchase)) {
+            Log("Signature validation failed for completed pending purchase: " + originalInfo.getProduct());
+            notifyBillingError(ErrorType.DEVELOPER_ERROR, "Signature validation failed");
+            return;
+        }
+
+        PurchaseInfo completedPurchaseInfo = new PurchaseInfo(originalInfo.getProductInfo(), completedPurchase);
+
         // Synchronized block for thread-safe processing
         synchronized (purchasedProductsSync) {
             // Ensure original pending entry is removed when a pending purchase completes
@@ -1069,49 +1095,45 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 return;
             }
 
-            PurchaseInfo completedPurchaseInfo = new PurchaseInfo(originalInfo.getProductInfo(), completedPurchase);
+            // Manually add the newly completed purchase to the list
+            purchasedProductsList.add(completedPurchaseInfo);
+        }
 
-            // Process the completed purchase
-            processPurchases(
-                    originalInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION ?
-                            ProductType.SUBS : ProductType.INAPP,
-                    Collections.singletonList(completedPurchase),
-                    false
-            );
+        // Notify the listener that the purchase was successful
+        findUiHandler().post(() -> billingEventListener.onProductsPurchased(Collections.singletonList(completedPurchaseInfo)));
 
-            // Handle auto-consume for consumables
-            if (shouldAutoConsume && originalInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
-                consumeWithRetry(completedPurchaseInfo, 0, 3, new ConsumeEventListener() {
-                    @Override
-                    public void onSuccess() {
-                        synchronized (purchasedProductsSync) {
-                            purchasedProductsList.remove(completedPurchaseInfo);
-                        }
-                        findUiHandler().post(() ->
-                                billingEventListener.onPurchaseConsumed(completedPurchaseInfo));
+        // Handle auto-consume for consumables
+        if (shouldAutoConsume && originalInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
+            consumeWithRetry(completedPurchaseInfo, 0, 3, new ConsumeEventListener() {
+                @Override
+                public void onSuccess() {
+                    synchronized (purchasedProductsSync) {
+                        purchasedProductsList.remove(completedPurchaseInfo);
                     }
+                    findUiHandler().post(() ->
+                            billingEventListener.onPurchaseConsumed(completedPurchaseInfo));
+                }
 
-                    @Override
-                    public void onFailure() {
-                        handleConsumeFailure(completedPurchaseInfo);
-                    }
-                });
-            }
-            // Handle auto-acknowledge for non-consumables and subscriptions
-            else if (shouldAutoAcknowledge && !completedPurchase.isAcknowledged()) {
-                acknowledgePurchaseWithRetry(completedPurchaseInfo, 0, 3, new AcknowledgeEventListener() {
-                    @Override
-                    public void onSuccess() {
-                        findUiHandler().post(() ->
-                                billingEventListener.onPurchaseAcknowledged(completedPurchaseInfo));
-                    }
+                @Override
+                public void onFailure() {
+                    handleConsumeFailure(completedPurchaseInfo);
+                }
+            });
+        }
+        // Handle auto-acknowledge for non-consumables and subscriptions
+        else if (shouldAutoAcknowledge && !completedPurchase.isAcknowledged()) {
+            acknowledgePurchaseWithRetry(completedPurchaseInfo, 0, 3, new AcknowledgeEventListener() {
+                @Override
+                public void onSuccess() {
+                    findUiHandler().post(() ->
+                            billingEventListener.onPurchaseAcknowledged(completedPurchaseInfo));
+                }
 
-                    @Override
-                    public void onFailure() {
-                        handleAcknowledgeFailure(completedPurchaseInfo);
-                    }
-                });
-            }
+                @Override
+                public void onFailure() {
+                    handleAcknowledgeFailure(completedPurchaseInfo);
+                }
+            });
         }
     }
 
@@ -1238,7 +1260,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public final void unsubscribe(Activity activity, String productId) {
         try {
-            String subscriptionUrl = "http://play.google.com/store/account/subscriptions?package=" + activity.getPackageName() + "&sku=" + productId;
+            String subscriptionUrl = "https://play.google.com/store/account/subscriptions?package=" + activity.getPackageName() + "&sku=" + productId;
 
             Intent intent = new Intent();
             intent.setAction(Intent.ACTION_VIEW);
@@ -1408,6 +1430,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
             Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
         }
+
+        // Prevent memory leaks and NPEs from pending exponential backoff tasks after the lifecycle is destroyed
+        uiHandler.removeCallbacksAndMessages(null);
+
+        billingEventListener = null;
     }
 
     @Override
