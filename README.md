@@ -16,6 +16,20 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
   </tr>
 </table>
 
+> [!IMPORTANT]  
+> **Production Notice: Subscriptions**
+>
+> While one-time purchases have been thoroughly battle-tested in live production environments, the **subscription flows have currently only been tested in sandbox/development environments.**
+>
+> If you plan to use this library for subscriptions, please rigorously test the complete lifecycle (auto-renewals, cancellations, and grace periods) via the Play Console before deploying.
+
+> [!TIP]  
+> **Google In-App Billing Library (this) vs. RevenueCat**
+>
+> **Use this library if:** You are building a game or app that relies on simple, one-time purchases (e.g., buying consumable coins, removing ads, or unlocking a premium version). This library is lightweight, zero-dependency, and handles the Google Play Billing lifecycle perfectly for these use cases.
+> 
+> **Use RevenueCat if:** Your core business model revolves around **Subscriptions**. Managing subscription lifecycles (grace periods, pauses, cross-platform syncing, and server-side receipt validation) purely on-device is highly prone to edge cases. For robust, production-ready subscriptions, I highly recommend using a dedicated service like [RevenueCat](https://www.revenuecat.com/) instead.
+
 # Implementation
 
 * ### Recommended usage:
@@ -30,6 +44,8 @@ The library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks
 
 
 * ### Special use case only (advanced):
+**Probably you should avoid this and implement the recommended usage!**
+
 The library also provides a `public void retryPendingPurchase(String productId)` method to "globally" retry `PENDING` purchases and `auto acknowledge/consume` them with exponential backoff, but to reliably use this, the `BillingConnector` must also be set in the `Application` level class and therefore have `two BillingConnector` logics in your app.
 
 Set a method (in the application-level class) to retry all pending purchases:
@@ -74,7 +90,7 @@ protected void onResume() {
 
 # Getting Started
 
-* Your project should build against Android 5.0 (minSdkVersion 21).
+* Your project should build against Android 6.0 (minSdkVersion 23).
 
 * Add the JitPack repository to your project's build.gradle file:
 
@@ -91,7 +107,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.7'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.8'
 }
 ```
 
@@ -103,7 +119,7 @@ dependencies {
 
 # Usage
 
-* Create an instance of BillingConnector class. Constructor will take 3 parameters:
+* Create an instance of the BillingConnector class. Constructor will take 3 parameters:
   - *Context*
   - *License key from `Play Console`*
   - *Lifecycle object (or `null` to handle instance cleanup manually)*
@@ -167,7 +183,7 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
      * Grant user entitlement for CONSUMABLE products here
      *
      * Even though onProductsPurchased is triggered when a purchase is successfully made
-     * there might be a problem along the way with the payment and the user will be able consume the product
+     * there might be a problem along the way with the payment and the user will be able to consume the product
      * without actually paying
      * */
   }
@@ -308,7 +324,7 @@ billingConnector.unsubscribe(this, "product_id");
 # Release Instance
 
 * Starting from version `1.1.5`, the library automatically releases the `BillingConnector` instance (set the `lifecycle` object to the `BillingConnector` constructor).
-* To avoid memory leaks don't forget to release the BillingConnector instance when it's no longer needed.
+* For versions lower than `1.1.5`, to avoid memory leaks, don't forget to release the BillingConnector instance when it's no longer needed.
 
 ```java
 @Override
@@ -328,13 +344,13 @@ The sample app provides an example for `Kotlin` users.
 
 # Sample App
 
-Go through the sample app to see a more advanced integration of the library.
+You can go through the sample app to see a more advanced integration of the library.
 
-It also shows a simple logic for a "remove ads button" scenario.
+It also shows a simple logic for a "remove ads" button scenario.
 
 # Credits
 
-This is an open-source project meant to help developers to fastly and easily implement the Google Billing API.
+This is an open-source project designed to help developers quickly and easily implement the Google Billing API.
 
 The library uses a code base from a fork created by [@Mustafa Rasheed](https://github.com/MRZ07) and was heavily modified by me and later by other contributors.
 
