@@ -7,6 +7,7 @@ import com.android.billingclient.api.Purchase;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import games.moisoni.google_iab.type.SkuProductType;
 
@@ -130,5 +131,18 @@ public class PurchaseInfo {
 
     public boolean isPending() {
         return purchaseState == Purchase.PurchaseState.PENDING;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        PurchaseInfo that = (PurchaseInfo) obj;
+        return Objects.equals(purchaseToken, that.purchaseToken);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(purchaseToken);
     }
 }
