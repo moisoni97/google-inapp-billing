@@ -24,7 +24,7 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 > If you plan to use this library for subscriptions, please rigorously test the complete lifecycle (auto-renewals, cancellations, and grace periods) via the Play Console before deploying.
 
 > [!TIP]  
-> **Google In-App Billing Library (this) vs. RevenueCat**
+> **This vs. RevenueCat**
 >
 > **Use this library if:** You are building a game or app that relies on simple, one-time purchases (e.g., buying consumable coins, removing ads, or unlocking a premium version). This library is lightweight, zero-dependency, and handles the Google Play Billing lifecycle perfectly for these use cases.
 > 
@@ -68,7 +68,7 @@ Call the above method in the `onProductsPurchased` callback (from the applicatio
 ```java
 @Override
 public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
-  //automatically retry when new pending purchases are detected
+  // Automatically retry when new pending purchases are detected
   for (PurchaseInfo purchase : purchases) {
     if (purchase.isPending()) {
       retryPendingPurchases();
@@ -278,8 +278,8 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
         //TODO - Google Play Store is not installed
         break;
 
-      //related only to a specific method (public void retryPendingPurchase(String productId))
-      //https://github.com/moisoni97/google-inapp-billing?tab=readme-ov-file#special-use-case-only-advanced
+      // Related only to a specific method (public void retryPendingPurchase(String productId))
+      // https://github.com/moisoni97/google-inapp-billing?tab=readme-ov-file#special-use-case-only-advanced
       case NOT_PENDING:
         //TODO - no pending purchase for product ID
         break;
