@@ -55,6 +55,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import games.moisoni.google_iab.listener.BillingEventAction;
 import games.moisoni.google_iab.type.ErrorType;
 import games.moisoni.google_iab.type.ProductType;
 import games.moisoni.google_iab.status.PurchasedResult;
@@ -92,7 +93,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private BillingClient billingClient;
     private BillingEventListener billingEventListener;
-    private volatile boolean released = false;
+    private volatile boolean isReleased = false;
 
     private List<String> consumableIds;
     private List<String> nonConsumableIds;
@@ -1396,23 +1397,18 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Action executed on the UI thread against a non-null BillingEventListener.
-     */
-    private interface BillingEventAction {
-        void dispatch(@NonNull BillingEventListener listener);
-    }
-
-    /**
      * Posts a listener callback on the UI thread, discarding it if the connector was released
-     * or the listener was cleared. Covers races where BillingClient completes after release().
+     * or the listener was cleared.
+     * <p>
+     * Covers races where BillingClient completes after release()
      */
     private void postBillingEvent(@NonNull BillingEventAction action) {
-        if (released) {
+        if (isReleased) {
             return;
         }
 
         findUiHandler().post(() -> {
-            if (released) {
+            if (isReleased) {
                 return;
             }
 
@@ -1448,8 +1444,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * To avoid leaks this method should be called when BillingConnector is no longer needed
      */
     public void release() {
-        // Mark released first so concurrent BillingClient callbacks cannot enqueue listener work
-        released = true;
+        // Mark as released first so concurrent BillingClient callbacks cannot enqueue listener work
+        isReleased = true;
 
         if (billingClient != null && billingClient.isReady()) {
             Log("BillingConnector instance release: ending connection...");
