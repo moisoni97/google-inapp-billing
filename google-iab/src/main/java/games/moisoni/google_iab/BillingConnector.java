@@ -1403,7 +1403,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public List<PurchaseInfo> getPurchasedProductsList() {
         synchronized (purchasedProductsSync) {
-            return List.copyOf(purchasedProductsList);
+            return ImmutableList.copyOf(purchasedProductsList);
         }
     }
 
