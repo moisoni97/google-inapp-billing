@@ -395,13 +395,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             // Reset the reconnect timer on successful connection
                             reconnectMilliseconds.set(RECONNECT_TIMER_START_MILLISECONDS);
 
+                            // Clear previously fetched products once so new queries accumulate cleanly for this connection
+                            fetchedProductInfoList.clear();
+
                             // Query consumable and non-consumable product details
                             if (!productInAppList.isEmpty()) {
                                 queryProductDetails(INAPP, productInAppList);
                             }
 
                             // Query subscription product details
-                            if (subscriptionIds != null) {
+                            if (!productSubsList.isEmpty()) {
                                 queryProductDetails(SUBS, productSubsList);
                             }
                             break;
@@ -473,8 +476,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         fetchedProductInfo.add(generateProductInfo(productDetails));
                     }
 
-                    // Clear the list to prevent UI duplicates on reconnect
-                    fetchedProductInfoList.clear();
+                    // Append newly fetched products
                     fetchedProductInfoList.addAll(fetchedProductInfo);
 
                     switch (productType) {
@@ -485,20 +487,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         default:
                             throw new IllegalStateException("Product type is not implemented");
                     }
-
-                    if (productDetailsQueriesPending.decrementAndGet() == 0) {
-                        fetchPurchasedProducts();
-                    }
                 }
             } else {
                 Log("Query Product Details: failed with response code: " + billingResult.getResponseCode());
                 postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
                         new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
+            }
 
-                // Unblock the pipeline even if this specific query failed (API response code is not OK)
-                if (productDetailsQueriesPending.decrementAndGet() == 0) {
-                    fetchPurchasedProducts();
-                }
+            // Always unblock the pipeline when a query finishes (success, empty, or error)
+            // Unblock the pipeline even if this specific query failed (API response code is not OK)
+            if (productDetailsQueriesPending.decrementAndGet() == 0) {
+                fetchPurchasedProducts();
             }
         });
     }
