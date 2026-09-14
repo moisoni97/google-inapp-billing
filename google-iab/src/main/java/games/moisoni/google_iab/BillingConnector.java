@@ -52,6 +52,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -112,6 +113,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
     private boolean shouldEnableLogging = false;
+
+    private final AtomicBoolean isConnecting = new AtomicBoolean(false);
 
     private volatile boolean isConnected = false;
     private volatile boolean fetchedPurchasedProducts = false;
@@ -319,7 +322,19 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return this;
         }
 
+        if (isConnected || (billingClient != null && billingClient.isReady())) {
+            Log("Billing service: already connected");
+            return this;
+        }
+
+        // Atomically prevent concurrent connection attempts
+        if (!isConnecting.compareAndSet(false, true)) {
+            Log("Billing service: connection already in progress");
+            return this;
+        }
+
         if (!isPlayStoreInstalled(context)) {
+            isConnecting.set(false);
             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PLAY_STORE_NOT_INSTALLED,
                     "Google Play Store is not installed", BILLING_UNAVAILABLE)));
             return this;
@@ -366,6 +381,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         // Check if any list is provided
         if (allProductList.isEmpty()) {
+            isConnecting.set(false);
             throw new IllegalArgumentException("At least one list of consumables, non-consumables or subscriptions is needed");
         }
 
@@ -373,15 +389,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
         int allIdsSize = allProductList.size();
         int allIdsSizeDistinct = new HashSet<>(allProductList).size();
         if (allIdsSize != allIdsSizeDistinct) {
+            isConnecting.set(false);
             throw new IllegalArgumentException("The product ID must appear only once in a list. Also, it must not be in different lists");
         }
 
         Log("Billing service: connecting...");
-        if (!billingClient.isReady()) {
+        try {
             billingClient.startConnection(new BillingClientStateListener() {
                 @Override
                 public void onBillingServiceDisconnected() {
                     isConnected = false;
+                    isConnecting.set(false);
 
                     if (isReleased) {
                         return;
@@ -396,6 +414,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                 @Override
                 public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
+                    isConnecting.set(false);
+
                     if (isReleased) {
                         return;
                     }
@@ -432,6 +452,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     }
                 }
             });
+        } catch (Exception e) {
+            isConnecting.set(false);
+            Log("Billing service: startConnection failed: " + e.getMessage());
         }
 
         return this;
@@ -1465,6 +1488,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     public void release() {
         // Mark as released first so concurrent BillingClient callbacks cannot enqueue listener work
         isReleased = true;
+
+        isConnecting.set(false);
 
         if (billingClient != null && billingClient.isReady()) {
             Log("BillingConnector instance release: ending connection...");
