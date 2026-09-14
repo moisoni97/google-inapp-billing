@@ -314,6 +314,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * To connect the billing client with Play Console
      */
     public final BillingConnector connect() {
+        if (isReleased) {
+            Log("Cannot connect: BillingConnector has already been released");
+            return this;
+        }
+
         if (!isPlayStoreInstalled(context)) {
             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PLAY_STORE_NOT_INSTALLED,
                     "Google Play Store is not installed", BILLING_UNAVAILABLE)));
@@ -378,6 +383,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 public void onBillingServiceDisconnected() {
                     isConnected = false;
 
+                    if (isReleased) {
+                        return;
+                    }
+
                     postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_DISCONNECTED,
                             "Billing service: disconnected", defaultResponseCode)));
 
@@ -387,6 +396,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                 @Override
                 public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
+                    if (isReleased) {
+                        return;
+                    }
+
                     switch (billingResult.getResponseCode()) {
                         case OK:
                             isConnected = true;
@@ -429,8 +442,15 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Max out at the time specified by RECONNECT_TIMER_MAX_TIME_MILLISECONDS (15 minutes)
      */
     private void retryBillingClientConnection() {
+        if (isReleased) {
+            return;
+        }
         long currentDelay = reconnectMilliseconds.get();
-        findUiHandler().postDelayed(this::connect, currentDelay);
+        findUiHandler().postDelayed(() -> {
+            if (!isReleased) {
+                connect();
+            }
+        }, currentDelay);
 
         long currentVal, newVal;
         do {
