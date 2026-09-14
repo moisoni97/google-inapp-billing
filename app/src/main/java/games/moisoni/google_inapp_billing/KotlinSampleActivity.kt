@@ -79,7 +79,7 @@ class KotlinSampleActivity : AppCompatActivity() {
             .setNonConsumableIds(nonConsumableIds) // To set non-consumable IDs - call only for non-consumable products
             .setSubscriptionIds(subscriptionIds) // To set subscription IDs - call only for subscription products
             .autoAcknowledge() // Legacy option - better call this. Alternatively, purchases can be acknowledged via the public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
-            .autoConsume() //legacy option - better call this. Alternatively purchases can be consumed via the public method "consumePurchase(PurchaseInfo purchaseInfo)"
+            .autoConsume() // Legacy option - better call this. Alternatively purchases can be consumed via the public method "consumePurchase(PurchaseInfo purchaseInfo)"
             .enableLogging() // To enable logging for debugging throughout the library - this can be skipped
             .connect() // To connect the billing client with the Play Console
 
