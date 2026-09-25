@@ -1360,10 +1360,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Called to purchase a simple subscription.
+     * Called to purchase a simple subscription
      * <p>
-     * This method assumes the desired offer is the first one available (index 0).
-     * For subscriptions with multiple offers, use subscribe(activity, productId, selectedOfferIndex).
+     * This method assumes the desired offer is the first one available (index 0)
+     * For subscriptions with multiple offers, use subscribe(activity, productId, selectedOfferIndex)
      */
     public final void subscribe(Activity activity, String productId) {
         purchase(activity, productId, 0);
@@ -1440,20 +1440,40 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Checks if Google Play Store is installed on the device using a two-step verification:
-     * 1. Checks for the Play Store package ("com.android.vending")
-     * 2. Verifies if any app can handle Play Store URLs (fallback)
-     * <p>
-     * Will trigger both PLAY_STORE_NOT_INSTALLED and BILLING_UNAVAILABLE
+     * Checks if Google Play Store is installed on the device using a three-step verification:
+     * 1. Checks for the In-App Billing service ("com.android.vending.billing.InAppBillingService.BIND")
+     * 2. Checks for the Play Store package ("com.android.vending")
+     * 3. Verifies if the Play Store app can handle market URLs (fallback)
      *
      * @param context - the application context
      * @return true if Play Store is installed, false otherwise
      */
     public boolean isPlayStoreInstalled(@NonNull Context context) {
+        if (isBillingServiceAvailable(context)) {
+            return true;
+        }
         if (isPlayStoreInstalledByPackage(context)) {
             return true;
         }
         return canHandlePlayStoreUrl(context);
+    }
+
+    /**
+     * Checks if Google Play Store billing service is available
+     * Works on Android 11+ (API 30+) without requiring broad package visibility
+     *
+     * @param context - the application context
+     * @return true if the billing service is available, false otherwise
+     */
+    private boolean isBillingServiceAvailable(@NonNull Context context) {
+        try {
+            Intent intent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
+            intent.setPackage("com.android.vending");
+            List<ResolveInfo> resolveInfoList = context.getPackageManager().queryIntentServices(intent, 0);
+            return !resolveInfoList.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -1465,36 +1485,36 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private boolean isPlayStoreInstalledByPackage(@NonNull Context context) {
         try {
             PackageManager pm = context.getPackageManager();
-            pm.getPackageInfo("com.android.vending", PackageManager.GET_ACTIVITIES);
+            pm.getPackageInfo("com.android.vending", 0);
             return true;
         } catch (PackageManager.NameNotFoundException e) {
-            Log("Google Play Store is not installed");
+            Log("Google Play Store is not installed by package check");
+            return false;
+        } catch (Exception e) {
             return false;
         }
     }
 
     /**
-     * Checks if any app (ideally Play Store) can handle Play Store URLs as a fallback verification
+     * Checks if the Play Store app can handle market URLs as a fallback verification
      *
      * @param context - the application context
-     * @return true if an app can handle Play Store URLs and is the actual Play Store, false otherwise
+     * @return true if Play Store handles market URLs, false otherwise
      */
     private boolean canHandlePlayStoreUrl(@NonNull Context context) {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store"));
-        PackageManager pm = context.getPackageManager();
-        ResolveInfo resolveInfo = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
-
-        if (resolveInfo == null) {
-            Log("Google Play Store is not installed");
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + context.getPackageName()));
+            intent.setPackage("com.android.vending");
+            PackageManager pm = context.getPackageManager();
+            ResolveInfo resolveInfo = pm.resolveActivity(intent, 0);
+            return resolveInfo != null && "com.android.vending".equals(resolveInfo.activityInfo.packageName);
+        } catch (Exception e) {
             return false;
         }
-
-        // Verify if the resolver is actually the Play Store
-        return "com.android.vending".equals(resolveInfo.activityInfo.packageName);
     }
 
     /**
-     * Returns a list of all purchased products.
+     * Returns a list of all purchased products
      */
     public List<PurchaseInfo> getPurchasedProductsList() {
         synchronized (purchasedProductsSync) {
@@ -1541,7 +1561,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Posts a listener callback on the UI thread, discarding it if the connector was released
-     * or the listener was cleared.
+     * or the listener was cleared
      * <p>
      * Covers races where BillingClient completes after release()
      */
