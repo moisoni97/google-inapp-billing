@@ -1533,6 +1533,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Checks purchase signature validity
      */
     private boolean isPurchaseSignatureValid(@NonNull Purchase purchase) {
+        if (base64Key == null || base64Key.trim().isEmpty()) {
+            return true;
+        }
         return Security.verifyPurchase(base64Key, purchase.getOriginalJson(), purchase.getSignature());
     }
 

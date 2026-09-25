@@ -7,6 +7,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -26,9 +27,9 @@ class Security {
     static final private String SIGNATURE_ALGORITHM = "SHA1withRSA";
 
     /**
-     * Verifies that the data was signed with the given signature
+     * Verifies that the data was signed with the given signature.
      *
-     * @param base64PublicKey the base64-encoded public key to use for verifying.
+     * @param base64PublicKey the base64-encoded public key to use for verifying
      * @param signedData      the signed JSON string (signed, not encrypted)
      * @param signature       the signature for the data, signed with the private key
      */
@@ -67,6 +68,10 @@ class Security {
             String msg = "Invalid key specification: " + e;
             Log.w(TAG, msg);
             throw new IOException(msg);
+        } catch (IllegalArgumentException e) {
+            String msg = "Base64 decoding failed for public key: " + e;
+            Log.w(TAG, msg);
+            throw new IOException(msg);
         }
     }
 
@@ -91,7 +96,7 @@ class Security {
         try {
             Signature signatureAlgorithm = Signature.getInstance(SIGNATURE_ALGORITHM);
             signatureAlgorithm.initVerify(publicKey);
-            signatureAlgorithm.update(signedData.getBytes());
+            signatureAlgorithm.update(signedData.getBytes(StandardCharsets.UTF_8));
             if (!signatureAlgorithm.verify(signatureBytes)) {
                 Log.w(TAG, "Signature verification failed...");
                 return false;
