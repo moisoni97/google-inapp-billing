@@ -601,7 +601,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                             processPurchases(ProductType.INAPP, purchases, true);
                         } else {
-                            Log("Query IN-APP Purchases: failed");
+                            Log("Query IN-APP Purchases: failed with response code: " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
+                            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                                    new BillingResponse(ErrorType.FETCH_PURCHASED_PRODUCTS_ERROR, billingResult)));
+
+                            if (purchaseQueriesPending.decrementAndGet() == 0) {
+                                fetchedPurchasedProducts = true;
+                            }
                         }
                     }
             );
@@ -620,7 +626,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                                 processPurchases(ProductType.SUBS, purchases, true);
                             } else {
-                                Log("Query SUBS Purchases: failed");
+                                Log("Query SUBS Purchases: failed with response code: " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
+                                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                                        new BillingResponse(ErrorType.FETCH_PURCHASED_PRODUCTS_ERROR, billingResult)));
+
+                                if (purchaseQueriesPending.decrementAndGet() == 0) {
+                                    fetchedPurchasedProducts = true;
+                                }
                             }
                         }
                 );
