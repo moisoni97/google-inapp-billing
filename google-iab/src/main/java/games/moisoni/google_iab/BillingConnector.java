@@ -210,6 +210,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 break;
             default:
                 Log("Initialization error: " + new BillingResponse(ErrorType.BILLING_ERROR, billingResult));
+                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                        new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
                 break;
         }
     }
@@ -312,6 +314,36 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Maps Google Billing response codes to ErrorType
+     */
+    private ErrorType findErrorType(int responseCode) {
+        switch (responseCode) {
+            case USER_CANCELED:
+                return ErrorType.USER_CANCELED;
+            case SERVICE_UNAVAILABLE:
+                return ErrorType.SERVICE_UNAVAILABLE;
+            case BILLING_UNAVAILABLE:
+                return ErrorType.BILLING_UNAVAILABLE;
+            case ITEM_UNAVAILABLE:
+                return ErrorType.ITEM_UNAVAILABLE;
+            case DEVELOPER_ERROR:
+                return ErrorType.DEVELOPER_ERROR;
+            case ERROR:
+                return ErrorType.ERROR;
+            case ITEM_ALREADY_OWNED:
+                return ErrorType.ITEM_ALREADY_OWNED;
+            case ITEM_NOT_OWNED:
+                return ErrorType.ITEM_NOT_OWNED;
+            case SERVICE_DISCONNECTED:
+                return ErrorType.CLIENT_DISCONNECTED;
+            case NETWORK_ERROR:
+                return ErrorType.NETWORK_ERROR;
+            default:
+                return ErrorType.BILLING_ERROR;
+        }
     }
 
     /**
@@ -852,6 +884,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * The offer index represents the different offers in the subscription
      */
     private void purchase(Activity activity, String productId, int selectedOfferIndex) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            Log("Billing client can not launch billing flow because activity is invalid");
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Activity is null or finishing", defaultResponseCode)));
+            return;
+        }
+
         if (checkProductBeforeInteraction(productId)) {
             ProductInfo foundProductInfo = null;
             for (ProductInfo productInfo : fetchedProductInfoList) {
@@ -899,7 +938,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         .setProductDetailsParamsList(productDetailsParamsList)
                         .build();
 
-                billingClient.launchBillingFlow(activity, billingFlowParams);
+                BillingResult billingResult = billingClient.launchBillingFlow(activity, billingFlowParams);
+
+                int responseCode = billingResult.getResponseCode();
+                if (responseCode != OK) {
+                    Log("Launch billing flow failed with response code: " + responseCode + " " + billingResult.getDebugMessage());
+                    postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                            new BillingResponse(findErrorType(responseCode), billingResult)));
+                }
             } else {
                 Log("Billing client can not launch billing flow because product details are missing for product: " + productId);
                 postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
