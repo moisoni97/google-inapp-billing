@@ -100,7 +100,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private List<String> nonConsumableIds;
     private List<String> subscriptionIds;
 
-    private final List<QueryProductDetailsParams.Product> allProductList = new ArrayList<>();
+    private final List<String> allProductList = new ArrayList<>();
 
     private final List<ProductInfo> fetchedProductInfoList = new CopyOnWriteArrayList<>();
     private final List<PurchaseInfo> purchasedProductsList = new ArrayList<>();
@@ -340,32 +340,19 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return this;
         }
 
-        List<QueryProductDetailsParams.Product> productInAppList = new ArrayList<>();
-        List<QueryProductDetailsParams.Product> productSubsList = new ArrayList<>();
+        List<String> productInAppList = new ArrayList<>();
+        List<String> productSubsList = new ArrayList<>();
 
-        // Set the empty list to null so we only have to deal with lists that are null or not empty
-        if (consumableIds == null || consumableIds.isEmpty()) {
-            consumableIds = null;
-        } else {
-            for (String id : consumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
-            }
+        if (consumableIds != null) {
+            productInAppList.addAll(consumableIds);
         }
 
-        if (nonConsumableIds == null || nonConsumableIds.isEmpty()) {
-            nonConsumableIds = null;
-        } else {
-            for (String id : nonConsumableIds) {
-                productInAppList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(INAPP).build());
-            }
+        if (nonConsumableIds != null) {
+            productInAppList.addAll(nonConsumableIds);
         }
 
-        if (subscriptionIds == null || subscriptionIds.isEmpty()) {
-            subscriptionIds = null;
-        } else {
-            for (String id : subscriptionIds) {
-                productSubsList.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(SUBS).build());
-            }
+        if (subscriptionIds != null) {
+            productSubsList.addAll(subscriptionIds);
         }
 
         // Clear the list to prevent duplicates during a reconnection attempt
@@ -485,8 +472,18 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Fires a query in Play Console to show products available to purchase
      */
-    private void queryProductDetails(String productType, List<QueryProductDetailsParams.Product> productList) {
-        QueryProductDetailsParams productDetailsParams = QueryProductDetailsParams.newBuilder().setProductList(productList).build();
+    private void queryProductDetails(String productType, @NonNull List<String> productList) {
+        List<QueryProductDetailsParams.Product> products = new ArrayList<>();
+        for (String productId : productList) {
+            products.add(QueryProductDetailsParams.Product.newBuilder()
+                    .setProductId(productId)
+                    .setProductType(productType)
+                    .build());
+        }
+
+        QueryProductDetailsParams productDetailsParams = QueryProductDetailsParams.newBuilder()
+                .setProductList(products)
+                .build();
 
         billingClient.queryProductDetailsAsync(productDetailsParams, (billingResult, productDetailsResult) -> {
             if (billingResult.getResponseCode() == OK) {
@@ -497,8 +494,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     foundProductIds.add(details.getProductId());
                 }
 
-                for (QueryProductDetailsParams.Product requestedProduct : productList) {
-                    String productId = requestedProduct.zza(); // .zza() gets the product ID string
+                for (String productId : productList) {
                     if (!foundProductIds.contains(productId)) {
                         Log("Error: Product ID '" + productId + "' not found. " +
                                 "Make sure it is configured correctly in the Play Console");
