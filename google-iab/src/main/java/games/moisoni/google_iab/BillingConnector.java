@@ -298,17 +298,21 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return false;
         }
 
+        if (productId == null || productId.trim().isEmpty()) {
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Product ID cannot be null or empty", defaultResponseCode)));
+            return false;
+        }
+
         boolean productExists = false;
-        if (productId != null) {
-            for (ProductInfo productInfo : fetchedProductInfoList) {
-                if (productInfo.getProduct().equals(productId)) {
-                    productExists = true;
-                    break;
-                }
+        for (ProductInfo productInfo : fetchedProductInfoList) {
+            if (productInfo.getProduct().equals(productId)) {
+                productExists = true;
+                break;
             }
         }
 
-        if (productId != null && !productExists) {
+        if (!productExists) {
             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
                     "The product ID: " + productId + " doesn't seem to exist on Play Console", defaultResponseCode)));
             return false;
@@ -463,10 +467,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             break;
                         case BILLING_UNAVAILABLE:
                             Log("Billing service: unavailable");
+                            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                                    new BillingResponse(ErrorType.BILLING_UNAVAILABLE, billingResult)));
                             retryBillingClientConnection();
                             break;
                         default:
-                            Log("Billing service: error");
+                            Log("Billing service: error -> " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
+                            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                                    new BillingResponse(findErrorType(billingResult.getResponseCode()), billingResult)));
                             retryBillingClientConnection();
                             break;
                     }
@@ -475,6 +483,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
         } catch (Exception e) {
             isConnecting.set(false);
             Log("Billing service: startConnection failed: " + e.getMessage());
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
+                    "Billing service connection failed: " + e.getMessage(), defaultResponseCode)));
         }
 
         return this;
@@ -1393,6 +1403,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Called to cancel a subscription
      */
     public final void unsubscribe(Activity activity, String productId) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            Log("Handling subscription cancellation: invalid activity");
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Activity is null or finishing", defaultResponseCode)));
+            return;
+        }
+
         try {
             String subscriptionUrl = "https://play.google.com/store/account/subscriptions?package=" + activity.getPackageName() + "&sku=" + productId;
 
@@ -1404,8 +1421,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
         } catch (Exception e) {
             Log("Handling subscription cancellation: error while trying to unsubscribe"
                     + "\nError: " + e.getMessage());
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.BILLING_ERROR,
+                    "Error opening subscription settings: " + e.getMessage(), defaultResponseCode)));
         }
-
     }
 
     /**
