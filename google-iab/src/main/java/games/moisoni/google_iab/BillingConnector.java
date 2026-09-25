@@ -1085,6 +1085,18 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (completedPurchase == null) {
             Log("Pending purchase not found, may have been canceled: " +
                     originalInfo.getProduct());
+
+            synchronized (purchasedProductsSync) {
+                Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+                while (iterator.hasNext()) {
+                    PurchaseInfo purchaseInfo = iterator.next();
+                    if (purchaseInfo.getPurchase().getPurchaseToken().equals(originalInfo.getPurchase().getPurchaseToken())) {
+                        iterator.remove();
+                        break;
+                    }
+                }
+            }
+
             notifyBillingError(ErrorType.PENDING_PURCHASE_CANCELED,
                     "Pending purchase may have been canceled");
             return;
@@ -1107,6 +1119,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * @param listener     - to handle success/failure
      */
     private void acknowledgePurchaseWithRetry(@NonNull PurchaseInfo purchaseInfo, int retryCount, int maxRetries, AcknowledgeEventListener listener) {
+        if (isReleased) {
+            return;
+        }
+
         if (retryCount >= maxRetries) {
             Log("Max retries reached for acknowledgment: " + purchaseInfo.getProduct());
             listener.onFailure();
@@ -1142,6 +1158,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * @param listener     - to handle success/failure
      */
     private void consumeWithRetry(@NonNull PurchaseInfo purchaseInfo, int retryCount, int maxRetries, @NonNull ConsumeEventListener listener) {
+        if (isReleased) {
+            return;
+        }
+
         if (retryCount >= maxRetries) {
             Log("Max consume retries reached for: " + purchaseInfo.getProduct());
             listener.onFailure();
@@ -1612,6 +1632,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         isConnecting.set(false);
 
+        if (lifecycle != null) {
+            lifecycle.removeObserver(this);
+            lifecycle = null;
+        }
+
         if (billingClient != null && billingClient.isReady()) {
             Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
@@ -1627,8 +1652,5 @@ public class BillingConnector implements DefaultLifecycleObserver {
     public void onDestroy(@NonNull LifecycleOwner owner) {
         DefaultLifecycleObserver.super.onDestroy(owner);
         release();
-        if (lifecycle != null) {
-            lifecycle.removeObserver(this);
-        }
     }
 }
