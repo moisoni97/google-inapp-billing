@@ -1308,15 +1308,32 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Checks if a subscription is currently active and auto-renewing
+     * Checks if a subscription is currently active
      *
      * @param productId - is the subscription product ID to check
      */
     public boolean isSubscriptionActive(String productId) {
         synchronized (purchasedProductsSync) {
             for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                if (purchaseInfo.getProduct().equals(productId))
-                    return purchaseInfo.getPurchase().isAutoRenewing();
+                if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPurchased()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if a subscription is currently active and auto-renewing
+     *
+     * @param productId - is the subscription product ID to check
+     */
+    public boolean isSubscriptionAutoRenewing(String productId) {
+        synchronized (purchasedProductsSync) {
+            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPurchased()) {
+                    return purchaseInfo.isAutoRenewing();
+                }
             }
         }
         return false;
@@ -1333,8 +1350,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
     public boolean isPurchasePending(String productId) {
         synchronized (purchasedProductsSync) {
             for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                if (purchaseInfo.getProduct().equals(productId))
-                    return purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING;
+                if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPending()) {
+                    return true;
+                }
             }
         }
         return false;
@@ -1404,13 +1422,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Checks purchase state synchronously
+     * Checks purchase state synchronously by ProductInfo
      */
     public final PurchasedResult isPurchased(@NonNull ProductInfo productInfo) {
-        return checkPurchased(productInfo.getProduct());
+        return isPurchased(productInfo.getProduct());
     }
 
-    private PurchasedResult checkPurchased(String productId) {
+    /**
+     * Checks purchase state synchronously by product ID
+     */
+    public final PurchasedResult isPurchased(String productId) {
         if (!isReady()) {
             return PurchasedResult.CLIENT_NOT_READY;
         } else if (!fetchedPurchasedProducts) {
@@ -1418,7 +1439,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
         } else {
             synchronized (purchasedProductsSync) {
                 for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                    if (purchaseInfo.getProduct().equals(productId)) {
+                    if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPurchased()) {
                         return PurchasedResult.YES;
                     }
                 }
