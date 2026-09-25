@@ -138,11 +138,11 @@ public class PurchaseInfo {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         PurchaseInfo that = (PurchaseInfo) obj;
-        return Objects.equals(purchaseToken, that.purchaseToken);
+        return Objects.equals(purchaseToken, that.purchaseToken) && Objects.equals(product, that.product);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(purchaseToken);
+        return Objects.hash(purchaseToken, product);
     }
 }

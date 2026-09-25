@@ -279,11 +279,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
             Log("Billing client is not ready because no connection is established yet");
         }
 
-        if (!billingClient.isReady()) {
+        if (billingClient == null || !billingClient.isReady()) {
             Log("Billing client is not ready yet");
+            return false;
         }
 
-        return isConnected && billingClient.isReady() && !fetchedProductInfoList.isEmpty();
+        return isConnected && !fetchedProductInfoList.isEmpty();
     }
 
     /**
@@ -691,6 +692,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Not all devices support subscriptions
      */
     public SupportState isSubscriptionSupported() {
+        if (billingClient == null || !billingClient.isReady()) {
+            Log("Subscriptions support check: client is not ready");
+            return SupportState.DISCONNECTED;
+        }
+
         BillingResult response = billingClient.isFeatureSupported(SUBSCRIPTIONS);
         SupportState state;
 
