@@ -51,6 +51,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -701,6 +702,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         iterator.remove();
                     }
                 }
+            } else {
+                // Remove any existing entries with matching tokens to prevent duplicates (when updating from onPurchasesUpdated)
+                for (PurchaseInfo newPurchase : signatureValidPurchases) {
+                    Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+                    while (iterator.hasNext()) {
+                        PurchaseInfo existingPurchase = iterator.next();
+                        if (existingPurchase.getPurchaseToken().equals(newPurchase.getPurchaseToken())) {
+                            iterator.remove();
+                        }
+                    }
+                }
             }
 
             // Add new purchases
@@ -716,14 +728,25 @@ public class BillingConnector implements DefaultLifecycleObserver {
             postBillingEvent(listener -> listener.onProductsPurchased(signatureValidPurchases));
         }
 
+        // Track processed tokens to prevent duplicate consume/acknowledge on multi-product purchases
+        Set<String> processedConsumeTokens = new HashSet<>();
+        Set<String> processedAcknowledgeTokens = new HashSet<>();
+
         for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
-            if (shouldAutoConsume) {
-                consumePurchase(purchaseInfo);
+            String token = purchaseInfo.getPurchaseToken();
+
+            if (shouldAutoConsume && purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
+                if (processedConsumeTokens.add(token)) {
+                    consumePurchase(purchaseInfo);
+                }
             }
+
             if (shouldAutoAcknowledge) {
                 boolean isProductConsumable = purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE;
                 if (!isProductConsumable) {
-                    acknowledgePurchase(purchaseInfo);
+                    if (processedAcknowledgeTokens.add(token)) {
+                        acknowledgePurchase(purchaseInfo);
+                    }
                 }
             }
         }
