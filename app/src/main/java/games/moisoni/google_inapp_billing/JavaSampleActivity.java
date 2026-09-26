@@ -117,15 +117,14 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                 switch (productType) {
                     case INAPP:
-                        //TODO - non-consumable/consumable products
+                        // Triggered on startup / reconnect for in-app (one-time) purchases
+                        //TODO - restore in-app purchases
                         break;
                     case SUBS:
-                        //TODO - subscription products
+                        // Triggered on startup / reconnect for subscription products
+                        //TODO - restore subscriptions
                         break;
                     case COMBINED:
-                        // This will be triggered on activity start
-                        // The other two (INAPP and SUBS) will be triggered when the user actually buys a product
-                        //TODO - restore purchases
                         break;
                 }
 
@@ -404,6 +403,57 @@ public class JavaSampleActivity extends AppCompatActivity {
                 Log.d("BillingConnector", "Cannot check: " + productInfo.getProduct() + " because purchased products are not fetched yet");
             }
         }
+
+        /*
+         * public final PurchasedResult isPurchased(String productId)
+         *
+         * To synchronously check a purchase state by product ID string
+         * */
+        PurchasedResult isPurchasedResult = billingConnector.isPurchased("non_consumable_id_1");
+        if (isPurchasedResult == PurchasedResult.YES) {
+            //TODO - do something
+            Log.d("BillingConnector", "Product is purchased");
+        }
+
+        /*
+         * public boolean isSubscriptionActive(String productId)
+         *
+         * To check if a subscription is currently active (PURCHASED state)
+         * */
+        boolean isSubActive = billingConnector.isSubscriptionActive("subscription_id_1");
+        Log.d("BillingConnector", "Is subscription active: " + isSubActive);
+
+        /*
+         * public boolean isSubscriptionAutoRenewing(String productId)
+         *
+         * To check if an active subscription is currently auto-renewing
+         * */
+        boolean isSubAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1");
+        Log.d("BillingConnector", "Is subscription auto-renewing: " + isSubAutoRenewing);
+
+        /*
+         * public boolean isPurchasePending(String productId)
+         *
+         * To check if a purchase is waiting for payment completion
+         * */
+        boolean isPending = billingConnector.isPurchasePending("consumable_id_1");
+        Log.d("BillingConnector", "Is purchase pending: " + isPending);
+
+        /*
+         * public boolean isPlayStoreInstalled(Context context)
+         *
+         * To check if Google Play Store and Billing Service are available
+         * */
+        boolean isPlayStoreInstalled = billingConnector.isPlayStoreInstalled(this);
+        Log.d("BillingConnector", "Is Play Store installed: " + isPlayStoreInstalled);
+
+        /*
+         * public List<PurchaseInfo> getPurchasedProductsList()
+         *
+         * Returns an immutable list of all currently owned products
+         * */
+        List<PurchaseInfo> allPurchases = billingConnector.getPurchasedProductsList();
+        Log.d("BillingConnector", "Total owned purchases: " + allPurchases.size());
 
         /*
          * public void consumePurchase(PurchaseInfo purchaseInfo)

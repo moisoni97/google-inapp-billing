@@ -127,17 +127,16 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                 when (productType) {
                     ProductType.INAPP -> {
-                        //TODO - non-consumable/consumable products
+                        // Triggered on startup / reconnect for in-app (one-time) purchases
+                        //TODO - restore in-app purchases
                     }
 
                     ProductType.SUBS -> {
-                        //TODO - subscription products
+                        // Triggered on startup / reconnect for subscription products
+                        //TODO - restore subscriptions
                     }
 
                     ProductType.COMBINED -> {
-                        // This will be triggered on activity start
-                        // The other two (INAPP and SUBS) will be triggered when the user actually buys a product
-                        //TODO - restore purchases
                     }
                 }
 
@@ -513,6 +512,57 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
             }
         }
+
+        /*
+         * public final PurchasedResult isPurchased(String productId)
+         *
+         * To synchronously check a purchase state by product ID string
+         * */
+        val isPurchasedResult = billingConnector.isPurchased("non_consumable_id_1")
+        if (isPurchasedResult == PurchasedResult.YES) {
+            //TODO - do something
+            Log.d("BillingConnector", "Product is purchased")
+        }
+
+        /*
+         * public boolean isSubscriptionActive(String productId)
+         *
+         * To check if a subscription is currently active (PURCHASED state)
+         * */
+        val isSubActive = billingConnector.isSubscriptionActive("subscription_id_1")
+        Log.d("BillingConnector", "Is subscription active: $isSubActive")
+
+        /*
+         * public boolean isSubscriptionAutoRenewing(String productId)
+         *
+         * To check if an active subscription is currently auto-renewing
+         * */
+        val isSubAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1")
+        Log.d("BillingConnector", "Is subscription auto-renewing: $isSubAutoRenewing")
+
+        /*
+         * public boolean isPurchasePending(String productId)
+         *
+         * To check if a purchase is waiting for payment completion
+         * */
+        val isPending = billingConnector.isPurchasePending("consumable_id_1")
+        Log.d("BillingConnector", "Is purchase pending: $isPending")
+
+        /*
+         * public boolean isPlayStoreInstalled(Context context)
+         *
+         * To check if Google Play Store and Billing Service are available
+         * */
+        val isPlayStoreInstalled = billingConnector.isPlayStoreInstalled(this)
+        Log.d("BillingConnector", "Is Play Store installed: $isPlayStoreInstalled")
+
+        /*
+         * public List<PurchaseInfo> getPurchasedProductsList()
+         *
+         * Returns an immutable list of all currently owned products
+         * */
+        val allPurchases = billingConnector.purchasedProductsList
+        Log.d("BillingConnector", "Total owned purchases: ${allPurchases.size}")
 
         /*
         * public void consumePurchase(PurchaseInfo purchaseInfo)

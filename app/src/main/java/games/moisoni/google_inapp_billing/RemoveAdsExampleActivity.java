@@ -86,6 +86,7 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
                             if (isAcknowledged) {
 
                                 // Here we are saving the purchase status into our "userPrefersAdFree" variable
+                                userPrefersAdFree = true;
                                 SharedPrefsHelper.putBoolean("userPrefersAdFree", true);
 
                                 Toast.makeText(RemoveAdsExampleActivity.this, "The previous purchase was successfully restored.", Toast.LENGTH_SHORT).show();
@@ -109,6 +110,7 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
                 if (acknowledgedProduct.equalsIgnoreCase(getString(R.string.remove_ads_play_console_id))) {
 
                     // Here we are saving the purchase status into our "userPrefersAdFree" variable
+                    userPrefersAdFree = true;
                     SharedPrefsHelper.putBoolean("userPrefersAdFree", true);
 
                     Toast.makeText(RemoveAdsExampleActivity.this, "The purchase was successfully made.", Toast.LENGTH_SHORT).show();
