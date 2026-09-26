@@ -614,7 +614,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     private boolean isProductIdConsumable(String productId) {
-        if (consumableIds == null) {
+        if (consumableIds == null || productId == null) {
             return false;
         }
 
