@@ -94,7 +94,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private Lifecycle lifecycle;
 
     private BillingClient billingClient;
-    private BillingEventListener billingEventListener;
+    private volatile BillingEventListener billingEventListener;
     private volatile boolean isReleased = false;
 
     private List<String> consumableIds;
@@ -227,7 +227,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * To set consumable products IDs
      */
     public final BillingConnector setConsumableIds(List<String> consumableIds) {
-        this.consumableIds = consumableIds;
+        this.consumableIds = consumableIds != null ? new ArrayList<>(consumableIds) : null;
         return this;
     }
 
@@ -235,7 +235,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * To set non-consumable products IDs
      */
     public final BillingConnector setNonConsumableIds(List<String> nonConsumableIds) {
-        this.nonConsumableIds = nonConsumableIds;
+        this.nonConsumableIds = nonConsumableIds != null ? new ArrayList<>(nonConsumableIds) : null;
         return this;
     }
 
@@ -243,7 +243,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * To set subscription products IDs
      */
     public final BillingConnector setSubscriptionIds(List<String> subscriptionIds) {
-        this.subscriptionIds = subscriptionIds;
+        this.subscriptionIds = subscriptionIds != null ? new ArrayList<>(subscriptionIds) : null;
         return this;
     }
 
@@ -1045,6 +1045,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 "/" + MAX_PENDING_RETRIES + ") for: " + purchaseInfo.getProduct());
 
         findUiHandler().postDelayed(() -> {
+            if (isReleased) {
+                return;
+            }
+
             boolean shouldContinue = verifyPurchaseState(purchaseInfo);
             if (!shouldContinue) return;
 
