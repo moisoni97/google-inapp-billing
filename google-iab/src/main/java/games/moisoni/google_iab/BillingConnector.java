@@ -626,10 +626,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void fetchPurchasedProducts() {
         if (billingClient.isReady()) {
-            int queryCount = 1;
-            if (isSubscriptionSupported() == SupportState.SUPPORTED) {
-                queryCount++;
-            }
+            boolean isSubsSupported = isSubscriptionSupported() == SupportState.SUPPORTED;
+            int queryCount = isSubsSupported ? 2 : 1;
             purchaseQueriesPending.set(queryCount);
 
             billingClient.queryPurchasesAsync(
@@ -656,7 +654,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
             );
 
             // Query subscription purchases for supported devices
-            if (isSubscriptionSupported() == SupportState.SUPPORTED) {
+            if (isSubsSupported) {
                 billingClient.queryPurchasesAsync(
                         QueryPurchasesParams.newBuilder().setProductType(SUBS).build(),
                         (billingResult, purchases) -> {
