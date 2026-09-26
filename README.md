@@ -1,8 +1,9 @@
-# Google In-App Billing Library v8+ [![API](https://img.shields.io/badge/API-23%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=21) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
+# Google In-App Billing Library v9+ [![API](https://img.shields.io/badge/API-23%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=21) [![JitCI](https://jitci.com/gh/moisoni97/google-inapp-billing/svg)](https://jitci.com/gh/moisoni97/google-inapp-billing) [![JitPack](https://jitpack.io/v/moisoni97/google-inapp-billing.svg)](https://jitpack.io/#moisoni97/google-inapp-billing)
 A simple implementation of the Android In-App Billing API.
 
 It supports: in-app purchases (both consumable and non-consumable) and subscriptions with a base plan or multiple offers.
 
+<!--suppress HtmlDeprecatedAttribute -->
 <table>
   <tr>
     <td align="center" style="border: none;">
@@ -27,66 +28,21 @@ It supports: in-app purchases (both consumable and non-consumable) and subscript
 > **This vs. RevenueCat**
 >
 > **Use this library if:** You are building a game or app that relies on simple, one-time purchases (e.g., buying consumable coins, removing ads, or unlocking a premium version). This library is lightweight, zero-dependency, and handles the Google Play Billing lifecycle perfectly for these use cases.
-> 
+>
 > **Use RevenueCat if:** Your core business model revolves around **Subscriptions**. Managing subscription lifecycles (grace periods, pauses, cross-platform syncing, and server-side receipt validation) purely on-device is highly prone to edge cases. For robust, production-ready subscriptions, I highly recommend using a dedicated service like [RevenueCat](https://www.revenuecat.com/) instead.
 
 # Implementation
 
-* ### Recommended usage:
-
 It is recommended to implement the `BillingConnector` instance in your MainActivity (or any other activity that the user **frequently interacts with**).
 
-This is necessary because sometimes (due to different reasons) the purchase is not instantly processed and will have a `PENDING` state. All `PENDING` state purchases cannot be `acknowledged` or `consumed` and **will be refunded** by Google after 3 days.
+This is necessary because sometimes (due to slow payment methods like cash, bank transfers, or UPI) a purchase is not instantly processed and will have a `PENDING` state. All `PENDING` state purchases cannot be acknowledged or consumed and **will be refunded** by Google after 3 days if not completed.
 
-The library automatically handles acknowledgement and consumption, but for that, it needs the `BillingConnector` reference. It cannot happen in a background service. So if the `BillingConnector` is set in a remote activity that the user **rarely interacts with (or not at all)**, it will never be instantiated to receive the `Billing API callback` to acknowledge the new updated purchase status and the user will lose the purchase.
+The library automatically handles acknowledgment and consumption once the payment clears:
+1. When a transaction is first made in `PENDING` state, the library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks to let you know the payment is not completed yet. Here you can inform the user to wait or complete the payment at their provider.
+2. Once the user pays (hours or days later), Google Play updates the purchase state to `PURCHASED`.
+3. The next time the user opens or returns to your app, `BillingConnector` automatically queries Google Play, detects the completed purchase, executes the auto-acknowledgment/consumption, and triggers `onPurchaseAcknowledged` or `onPurchaseConsumed`.
 
-The library provides `ACKNOWLEDGE_WARNING` and `CONSUME_WARNING` error callbacks to let you know that the purchase status is still `PENDING`. Here you can inform the user to wait or to come back a little bit later to receive the purchase.
-
-
-* ### Special use case only (advanced):
-**Probably you should avoid this and implement the recommended usage!**
-
-The library also provides a `public void retryPendingPurchase(String productId)` method to "globally" retry `PENDING` purchases and `auto acknowledge/consume` them with exponential backoff, but to reliably use this, the `BillingConnector` must also be set in the `Application` level class and therefore have `two BillingConnector` logics in your app.
-
-Set a method (in the application-level class) to retry all pending purchases:
-
-```java
-public void retryPendingPurchases() {
-  if (billingConnector == null) return;
-
-  List<PurchaseInfo> purchases = billingConnector.getPurchasedProductsList();
-  for (PurchaseInfo purchase : purchases) {
-    if (purchase.isPending()) {
-      billingConnector.retryPendingPurchase(purchase.getProduct());
-    }
-  }
-}
-```
-
-Call the above method in the `onProductsPurchased` callback (from the application-level class):
-
-```java
-@Override
-public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
-  // Automatically retry when new pending purchases are detected
-  for (PurchaseInfo purchase : purchases) {
-    if (purchase.isPending()) {
-      retryPendingPurchases();
-      break;
-    }
-  }
-}
-```
-
-Or in any other activity in `onResume()`, to constantly check for `PENDING` purchases:
-
-```java
-@Override
-protected void onResume() {
-  super.onResume();
-  ((MyApplication) getApplication()).getBillingConnector().retryAllPendingPurchases();
-}
-```
+Because this sync requires an active `BillingConnector`, hosting it in your main activity ensures your app regularly reconnects, syncs with Google Play, and never misses a completed transaction.
 
 # Getting Started
 
@@ -107,7 +63,7 @@ allprojects {
 
 ```gradle
 dependencies {
-    implementation 'com.github.moisoni97:google-inapp-billing:1.1.8'
+    implementation 'com.github.moisoni97:google-inapp-billing:1.1.9'
 }
 ```
 
@@ -119,20 +75,20 @@ dependencies {
 
 # Usage
 
-* Create an instance of the BillingConnector class. Constructor will take 3 parameters:
+* Create an instance of the BillingConnector class. The constructor takes 3 parameters:
   - *Context*
-  - *License key from `Play Console`*
-  - *Lifecycle object (or `null` to handle instance cleanup manually)*
+  - *License key from `Play Console`* (or `null` / `""` if you perform signature verification on your backend server)
+  - *Lifecycle object* (or `null` to handle instance cleanup manually)
 
 ```java
 billingConnector = new BillingConnector(this, "license_key", getLifecycle())
         .setConsumableIds(consumableIds)
-                .setNonConsumableIds(nonConsumableIds)
-                .setSubscriptionIds(subscriptionIds)
-                .autoAcknowledge()
-                .autoConsume()
-                .enableLogging()
-                .connect();
+        .setNonConsumableIds(nonConsumableIds)
+        .setSubscriptionIds(subscriptionIds)
+        .autoAcknowledge()
+        .autoConsume()
+        .enableLogging()
+        .connect();
 ```
 
 * Implement the listener to handle event results and errors:
@@ -141,21 +97,21 @@ billingConnector = new BillingConnector(this, "license_key", getLifecycle())
 billingConnector.setBillingEventListener(new BillingEventListener() {
   @Override
   public void onProductsFetched(@NonNull List<ProductInfo> productDetails) {
-    /*Provides a list with fetched products*/
+    /*Provides a list with fetched products from Play Console*/
   }
 
   @Override
   public void onPurchasedProductsFetched(@NonNull ProductType productType, @NonNull List<PurchaseInfo> purchases) {
-    /*Provides a list with fetched purchased products*/
-
     /*
-     * This will be called even when no purchased products are returned by the API
-     * */
+     * Provides a list with currently owned products.
+     * Note: This callback will be triggered separately for ProductType.INAPP and ProductType.SUBS.
+     * It is called even when no purchased products are returned.
+     */
   }
 
   @Override
   public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
-    /*Callback after a product is purchased*/
+    /*Callback after a purchase flow finishes successfully*/
   }
 
   @Override
@@ -163,16 +119,14 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
     /*Callback after a purchase is acknowledged*/
 
     /*
-     * Grant user entitlement for NON-CONSUMABLE products and SUBSCRIPTIONS here
+     * Grant user entitlement for NON-CONSUMABLE products and SUBSCRIPTIONS here.
      *
-     * Even though onProductsPurchased is triggered when a purchase is successfully made
-     * there might be a problem along the way with the payment and the purchase won't be acknowledged
+     * Even though onProductsPurchased is triggered when a purchase flow finishes,
+     * the transaction must be acknowledged within 3 days or Google will refund it.
      *
-     * Google will refund users purchases that aren't acknowledged in 3 days
-     *
-     * To ensure that all valid purchases are acknowledged the library will automatically
-     * check and acknowledge all unacknowledged products at the startup
-     * */
+     * To ensure valid purchases are acknowledged, the library automatically
+     * checks and acknowledges unacknowledged products at startup.
+     */
   }
 
   @Override
@@ -180,21 +134,15 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
     /*Callback after a purchase is consumed*/
 
     /*
-     * Grant user entitlement for CONSUMABLE products here
+     * Grant user entitlement for CONSUMABLE products here (e.g. coins, gems).
      *
-     * Even though onProductsPurchased is triggered when a purchase is successfully made
-     * there might be a problem along the way with the payment and the user will be able to consume the product
-     * without actually paying
-     * */
+     * Consuming makes the product available to be purchased again.
+     */
   }
 
   @Override
   public void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response) {
-    /*Callback after a specific product ID is not found*/
-
-    /*
-     * This is useful for identifying configuration errors in the Play Console
-     * */
+    /*Callback after a specific product ID is not found on Play Console*/
   }
 
   @Override
@@ -216,14 +164,9 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
         break;
       case CONSUME_WARNING:
         /*
-         * This will be triggered when a consumable purchase has a PENDING state
-         * User entitlement must be granted when the state is PURCHASED
-         *
-         * PENDING transactions usually occur when users choose cash as their form of payment
-         *
-         * Here users can be informed that it may take a while until the purchase complete
-         * and to come back later to receive their purchase
-         * */
+         * Triggered when a consumable purchase is in PENDING state.
+         * Entitlement should only be granted when the state becomes PURCHASED.
+         */
         //TODO - warning during consumption
         break;
       case ACKNOWLEDGE_ERROR:
@@ -231,14 +174,9 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
         break;
       case ACKNOWLEDGE_WARNING:
         /*
-         * This will be triggered when a purchase can not be acknowledged because the state is PENDING
-         * A purchase can be acknowledged only when the state is PURCHASED
-         *
-         * PENDING transactions usually occur when users choose cash as their form of payment
-         *
-         * Here users can be informed that it may take a while until the purchase complete
-         * and to come back later to receive their purchase
-         * */
+         * Triggered when a purchase cannot be acknowledged because it is PENDING.
+         * A purchase can be acknowledged only when the state is PURCHASED.
+         */
         //TODO - warning during acknowledgment
         break;
       case FETCH_PURCHASED_PRODUCTS_ERROR:
@@ -269,34 +207,58 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
         //TODO - fatal error during the API action
         break;
       case ITEM_ALREADY_OWNED:
-        //TODO - the purchase failed because the item is already owned
+        //TODO - failure to purchase since item is already owned
         break;
       case ITEM_NOT_OWNED:
-        //TODO - the requested product is not available for purchase
+        //TODO - failure to consume since item is not owned
         break;
       case PLAY_STORE_NOT_INSTALLED:
-        //TODO - Google Play Store is not installed
-        break;
-
-      // Related only to a specific method (public void retryPendingPurchase(String productId))
-      // https://github.com/moisoni97/google-inapp-billing?tab=readme-ov-file#special-use-case-only-advanced
-      case NOT_PENDING:
-        //TODO - no pending purchase for product ID
-        break;
-      case PENDING_PURCHASE_CANCELED:
-        //TODO - pending purchase may have been canceled
-        break;
-      case PENDING_PURCHASE_RETRY_ERROR:
-        //TODO - pending purchase still not completed after retries
+        //TODO - Google Play Store is not installed on the device
         break;
     }
   }
 });
 ```
 
+# Check Purchase Status
+
+You can synchronously query the status of any product or subscription:
+
+```java
+// Check if an in-app product is currently purchased
+PurchasedResult result = billingConnector.isPurchased("product_id");
+switch (result) {
+    case YES:
+        // User owns this product (e.g. remove ads)
+        break;
+    case NO:
+        // User does not own this product
+        break;
+    case CLIENT_NOT_READY:
+    case PURCHASED_PRODUCTS_NOT_FETCHED_YET:
+        // Billing client is still connecting or querying purchases
+        break;
+}
+
+// Check if a purchase is currently waiting for payment (e.g. cash payment)
+boolean isPending = billingConnector.isPurchasePending("product_id");
+
+// Check if a subscription is currently active (PURCHASED state)
+boolean isSubActive = billingConnector.isSubscriptionActive("subscription_id");
+
+// Check if a subscription is active AND auto-renewing (not cancelled / in grace period)
+boolean isSubAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id");
+
+// Check if Google Play Store is installed on the device
+boolean isPlayStoreInstalled = billingConnector.isPlayStoreInstalled(context);
+
+// Get the list of all currently owned products
+List<PurchaseInfo> purchases = billingConnector.getPurchasedProductsList();
+```
+
 # Initiate Purchase
 
-* Purchase a non-consumable/consumable product:
+* Purchase a non-consumable or consumable product:
 
 ```java
 billingConnector.purchase(this, "product_id");
@@ -315,16 +277,50 @@ billingConnector.subscribe(this, "product_id", 0);
 billingConnector.subscribe(this, "product_id", 1);
 ```
 
-* Cancel a subscription:
+* Cancel / Manage a subscription (opens Google Play subscription settings):
 
 ```java
 billingConnector.unsubscribe(this, "product_id");
 ```
 
+# Manual Consume & Acknowledge
+
+If you choose not to use `autoConsume()` or `autoAcknowledge()` (for example, if you verify receipts on your backend or need to deliver digital goods first), you can trigger them manually:
+
+```java
+// Manually consume a consumable purchase
+billingConnector.consumePurchase(purchaseInfo);
+
+// Manually acknowledge a non-consumable product or subscription
+billingConnector.acknowledgePurchase(purchaseInfo);
+```
+
+# Useful Methods
+
+Inside callbacks such as `onProductsPurchased`, `onPurchaseAcknowledged`, or `onPurchaseConsumed`, you have access to `PurchaseInfo`:
+
+| Method | Description |
+| :--- | :--- |
+| `purchase.getProduct()` | Returns the primary product ID / SKU string. |
+| `purchase.getProducts()` | Returns a list of all product IDs in this purchase. |
+| `purchase.getOrderId()` | Returns the unique Google Play order ID. |
+| `purchase.getPurchaseToken()` | Returns the token used to identify this purchase on Google Play. |
+| `purchase.getPurchaseTime()` | Returns the time the product was purchased (milliseconds since epoch). |
+| `purchase.getQuantity()` | Returns the quantity purchased. |
+| `purchase.isAcknowledged()` | Returns `true` if the purchase has already been acknowledged. |
+| `purchase.isAutoRenewing()` | Returns `true` if the subscription is set to auto-renew. |
+| `purchase.isPurchased()` | Returns `true` if the state is `PURCHASED`. |
+| `purchase.isPending()` | Returns `true` if the state is `PENDING`. |
+
 # Release Instance
 
-* Starting from version `1.1.5`, the library automatically releases the `BillingConnector` instance (set the `lifecycle` object to the `BillingConnector` constructor).
-* For versions lower than `1.1.5`, to avoid memory leaks, don't forget to release the BillingConnector instance when it's no longer needed.
+* When passing a `Lifecycle` object to the constructor, the library automatically handles cleanup when the LifecycleOwner is destroyed:
+
+```java
+billingConnector = new BillingConnector(this, "license_key", getLifecycle())
+```
+
+* If you passed `null` for the `lifecycle` parameter, call `release()` manually when the instance is no longer needed (e.g. in `onDestroy()`):
 
 ```java
 @Override
@@ -353,5 +349,3 @@ It also shows a simple logic for a "remove ads" button scenario.
 This is an open-source project designed to help developers quickly and easily implement the Google Billing API.
 
 The library uses a code base from a fork created by [@Mustafa Rasheed](https://github.com/MRZ07) and was heavily modified by me and later by other contributors.
-
-
