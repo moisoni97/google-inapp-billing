@@ -42,7 +42,7 @@ The library automatically handles acknowledgment and consumption once the paymen
 2. Once the user pays (hours or days later), Google Play updates the purchase state to `PURCHASED`.
 3. The next time the user opens or returns to your app, `BillingConnector` automatically queries Google Play, detects the completed purchase, executes the auto-acknowledgment/consumption, and triggers `onPurchaseAcknowledged` or `onPurchaseConsumed`.
 
-Because this sync requires an active `BillingConnector`, hosting it in your main activity ensures your app regularly reconnects, syncs with Google Play, and never misses a completed transaction.
+Because this sync requires an active `BillingConnector`, hosting it in your MainActivity ensures your app regularly reconnects, syncs with Google Play, and never misses a completed transaction.
 
 # Getting Started
 
@@ -220,6 +220,33 @@ billingConnector.setBillingEventListener(new BillingEventListener() {
 });
 ```
 
+# Initiate Purchase
+
+* Purchase a non-consumable or consumable product:
+
+```java
+billingConnector.purchase(this, "product_id");
+```
+
+* Purchase a subscription with a base plan:
+
+```java
+billingConnector.subscribe(this, "product_id");
+```
+
+* Purchase a subscription with multiple offers:
+
+```java
+billingConnector.subscribe(this, "product_id", 0);
+billingConnector.subscribe(this, "product_id", 1);
+```
+
+* Cancel / Manage a subscription (opens Google Play subscription settings):
+
+```java
+billingConnector.unsubscribe(this, "product_id");
+```
+
 # Check Purchase Status
 
 You can synchronously query the status of any product or subscription:
@@ -254,33 +281,6 @@ boolean isPlayStoreInstalled = billingConnector.isPlayStoreInstalled(context);
 
 // Get the list of all currently owned products
 List<PurchaseInfo> purchases = billingConnector.getPurchasedProductsList();
-```
-
-# Initiate Purchase
-
-* Purchase a non-consumable or consumable product:
-
-```java
-billingConnector.purchase(this, "product_id");
-```
-
-* Purchase a subscription with a base plan:
-
-```java
-billingConnector.subscribe(this, "product_id");
-```
-
-* Purchase a subscription with multiple offers:
-
-```java
-billingConnector.subscribe(this, "product_id", 0);
-billingConnector.subscribe(this, "product_id", 1);
-```
-
-* Cancel / Manage a subscription (opens Google Play subscription settings):
-
-```java
-billingConnector.unsubscribe(this, "product_id");
 ```
 
 # Manual Consume & Acknowledge
@@ -348,4 +348,4 @@ It also shows a simple logic for a "remove ads" button scenario.
 
 This is an open-source project designed to help developers quickly and easily implement the Google Billing API.
 
-The library uses a code base from a fork created by [@Mustafa Rasheed](https://github.com/MRZ07) and was heavily modified by me and later by other contributors.
+The library uses a codebase from a fork created by [@Mustafa Rasheed](https://github.com/MRZ07) and was heavily modified by me and later by other contributors.
