@@ -79,14 +79,21 @@ class KotlinSampleActivity : AppCompatActivity() {
             .setConsumableIds(consumableIds) // To set consumable IDs - call only for consumable products
             .setNonConsumableIds(nonConsumableIds) // To set non-consumable IDs - call only for non-consumable products
             .setSubscriptionIds(subscriptionIds) // To set subscription IDs - call only for subscription products
-            .autoAcknowledge() // Legacy option - better call this. Alternatively, purchases can be acknowledged via the public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
-            .autoConsume() // Legacy option - better call this. Alternatively purchases can be consumed via the public method "consumePurchase(PurchaseInfo purchaseInfo)"
+            .autoAcknowledge() // Recommended - acknowledges non-consumables and subscriptions automatically. Alternatively, call the public method "acknowledgePurchase(PurchaseInfo purchaseInfo)"
+            .autoConsume() // Recommended - consumes consumables automatically. Alternatively, call the public method "consumePurchase(PurchaseInfo purchaseInfo)"
             .enableLogging() // To enable logging for debugging throughout the library - this can be skipped
-            .connect() // To connect the billing client with the Play Console
+            .connect() // To connect the billing client with Google Play
 
         billingConnector.setBillingEventListener(object :
             BillingEventListener {
-            override fun onProductsFetched(productDetails: MutableList<ProductInfo>) {
+            override fun onProductsFetched(productDetails: List<ProductInfo>) {
+                /*
+                 * Provides the details of the products available for purchase
+                 *
+                 * Triggered separately for in-app products and subscriptions after connecting,
+                 * and again after the connection is re-established
+                 * */
+
                 var product: String
                 var price: String? // null for subscriptions (they have no one-time purchase offer)
 
@@ -120,7 +127,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
             override fun onPurchasedProductsFetched(
                 productType: ProductType,
-                purchases: MutableList<PurchaseInfo>
+                purchases: List<PurchaseInfo>
             ) {
                 /*
                 * This will be called even when no purchased products are returned by the API
@@ -141,6 +148,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ProductType.COMBINED -> {
+                        // Never passed to this callback, new purchases are delivered to onProductsPurchased
                     }
                 }
 
@@ -168,7 +176,14 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onProductsPurchased(purchases: MutableList<PurchaseInfo>) {
+            override fun onProductsPurchased(purchases: List<PurchaseInfo>) {
+                /*
+                 * Triggered when a purchase flow finishes successfully
+                 *
+                 * Don't grant entitlement here: the purchase can still be PENDING (e.g. cash payments)
+                 * Grant it in onPurchaseAcknowledged (non-consumables, subscriptions) or onPurchaseConsumed (consumables)
+                 * */
+
                 var product: String
                 var purchaseToken: String
 
@@ -202,13 +217,16 @@ class KotlinSampleActivity : AppCompatActivity() {
                 /*
                  * Grant user entitlement for NON-CONSUMABLE products and SUBSCRIPTIONS here
                  *
-                 * Even though onProductsPurchased is triggered when a purchase is successfully made
-                 * there might be a problem along the way with the payment and the purchase won't be acknowledged
-                 *
-                 * Google will refund users purchases that aren't acknowledged in 3 days
+                 * Only PURCHASED (paid) purchases are acknowledged, and Google refunds purchases that aren't acknowledged in 3 days
                  *
                  * To ensure that all valid purchases are acknowledged the library will automatically
                  * check and acknowledge all unacknowledged products at startup and each time purchases are refreshed
+                 * So this is also triggered for purchases made earlier (e.g. the app was closed before the acknowledgment)
+                 *
+                 * The entitlement is also restored in onPurchasedProductsFetched, so granting it must be safe to repeat
+                 * (e.g. set a flag, don't add to a counter)
+                 *
+                 * Note: purchase.isAcknowledged() still returns false here, it reflects the state before the acknowledgment
                  * */
 
                 when (purchase.product) {
@@ -230,9 +248,9 @@ class KotlinSampleActivity : AppCompatActivity() {
                 /*
                  * Grant user entitlement for CONSUMABLE products here
                  *
-                 * Even though onProductsPurchased is triggered when a purchase is successfully made
-                 * there might be a problem along the way with the payment and the user will be able to consume the product
-                 * without actually paying
+                 * Only PURCHASED (paid) purchases are consumed, so the payment is complete at this point
+                 * A purchase is consumed only once, so the item can be added to the user's balance (e.g. coins)
+                 * If multi-quantity purchases are enabled in Play Console, grant purchase.getQuantity() items
                  * */
 
                 when (purchase.product) {
@@ -286,14 +304,15 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                     ErrorType.CONSUME_WARNING -> {
                         /*
-                        * This will be triggered when a consumable purchase has a PENDING state
-                        * User entitlement must be granted when the state is PURCHASED
-                        *
-                        * PENDING transactions usually occur when users choose cash as their form of payment
-                        *
-                        * Here users can be informed that it may take a while until the purchase complete
-                        * and to come back later to receive their purchase
-                        * */
+                         * This will be triggered when a consumable purchase has a PENDING state (reported once per purchase)
+                         * User entitlement must be granted when the state is PURCHASED
+                         *
+                         * PENDING transactions usually occur when users choose cash as their form of payment
+                         *
+                         * Here users can be informed that it may take a while until the purchase complete
+                         * and to come back later to receive their purchase
+                         * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
+                         * */
                         //TODO - warning during consumption
                     }
 
@@ -303,14 +322,15 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                     ErrorType.ACKNOWLEDGE_WARNING -> {
                         /*
-                          * This will be triggered when a purchase can not be acknowledged because the state is PENDING
-                          * A purchase can be acknowledged only when the state is PURCHASED
-                          *
-                          * PENDING transactions usually occur when users choose cash as their form of payment
-                          *
-                          * Here users can be informed that it may take a while until the purchase complete
-                          * and to come back later to receive their purchase
-                          * */
+                         * This will be triggered when a purchase can not be acknowledged because the state is PENDING (reported once per purchase)
+                         * A purchase can be acknowledged only when the state is PURCHASED
+                         *
+                         * PENDING transactions usually occur when users choose cash as their form of payment
+                         *
+                         * Here users can be informed that it may take a while until the purchase complete
+                         * and to come back later to receive their purchase
+                         * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
+                         * */
                         //TODO - warning during acknowledgment
                     }
 
@@ -429,7 +449,8 @@ class KotlinSampleActivity : AppCompatActivity() {
             billingConnector.purchase(this, "non_consumable_id_2")
         }
 
-        // Purchase a subscription without an offer (only a base plan)
+        // Purchase the first offer of a subscription (index 0)
+        // Fine for a subscription with a single base plan and no offers, otherwise select the offer by ID (see below)
         purchaseSubscription.setOnClickListener {
             billingConnector.subscribe(this, "subscription_id_1")
         }
@@ -639,7 +660,8 @@ class KotlinSampleActivity : AppCompatActivity() {
         /*
          * public final void subscribe(Activity activity, String productId)
          *
-         * To purchase a subscription with a base plan
+         * To purchase the first offer returned by Google Play (index 0)
+         * Fine for a subscription with a single base plan and no offers, otherwise select the offer by ID
          * */
         billingConnector.subscribe(this, "product_id")
 

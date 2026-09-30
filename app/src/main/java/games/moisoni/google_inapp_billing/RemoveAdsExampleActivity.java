@@ -111,13 +111,13 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
                 }
             }
 
-            // This IS NOT the listener in which we'll give user entitlement for purchases (see ReadMe.md why)
+            // This IS NOT the listener in which we'll give user entitlement for purchases (the purchase can still be PENDING, see README.md)
             @Override
             public void onProductsPurchased(@NonNull List<PurchaseInfo> purchases) {
 
             }
 
-            // This IS the listener in which we'll give user entitlement for purchases (the ReadMe.md explains why)
+            // This IS the listener in which we'll give user entitlement for purchases (the README.md explains why)
             @Override
             public void onPurchaseAcknowledged(@NonNull PurchaseInfo purchase) {
                 String acknowledgedProduct = purchase.getProduct();
@@ -146,7 +146,7 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
                 switch (response.getErrorType()) {
                     case ACKNOWLEDGE_WARNING:
-                        // This response will be triggered when the purchase is still PENDING
+                        // This response will be triggered when the purchase is still PENDING (reported once per purchase)
                         Toast.makeText(RemoveAdsExampleActivity.this, "The transaction is still pending. Please come back later to receive the purchase!", Toast.LENGTH_SHORT).show();
                         break;
                     case BILLING_UNAVAILABLE:
