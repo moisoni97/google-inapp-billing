@@ -1,6 +1,7 @@
 package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.android.billingclient.api.ProductDetails;
 
@@ -16,7 +17,7 @@ public class SubscriptionOfferDetails {
     private final String basePlanId;
     private final List<PricingPhases> pricingPhases;
 
-    public SubscriptionOfferDetails(String offerId, List<ProductDetails.PricingPhase> pricingPhases, List<String> offerTags, String offerToken, String basePlanId) {
+    public SubscriptionOfferDetails(@Nullable String offerId, List<ProductDetails.PricingPhase> pricingPhases, List<String> offerTags, String offerToken, String basePlanId) {
         this.offerId = offerId;
         this.offerTags = offerTags;
         this.offerToken = offerToken;
@@ -32,6 +33,10 @@ public class SubscriptionOfferDetails {
         }
     }
 
+    /**
+     * Returns the offer ID from Play Console, or null for the base plan itself (no offer)
+     */
+    @Nullable
     public String getOfferId() {
         return offerId;
     }

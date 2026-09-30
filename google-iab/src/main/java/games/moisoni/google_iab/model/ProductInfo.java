@@ -1,6 +1,7 @@
 package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.android.billingclient.api.ProductDetails;
 
@@ -83,14 +84,29 @@ public class ProductInfo {
         return name;
     }
 
+    /**
+     * Returns the formatted price of the one-time purchase offer
+     * <p>
+     * Null for subscriptions, which have no one-time purchase offer (see getSubscriptionOfferDetails())
+     */
+    @Nullable
     public String getOneTimePurchaseOfferFormattedPrice() {
         return oneTimePurchaseOfferFormattedPrice;
     }
 
+    /**
+     * Returns the price in micro-units of the one-time purchase offer, or 0 for subscriptions
+     */
     public long getOneTimePurchaseOfferPriceAmountMicros() {
         return oneTimePurchaseOfferPriceAmountMicros;
     }
 
+    /**
+     * Returns the ISO 4217 currency code of the one-time purchase offer
+     * <p>
+     * Null for subscriptions, which have no one-time purchase offer (see getSubscriptionOfferDetails())
+     */
+    @Nullable
     public String getOneTimePurchaseOfferPriceCurrencyCode() {
         return oneTimePurchaseOfferPriceCurrencyCode;
     }

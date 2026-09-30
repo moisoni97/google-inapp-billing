@@ -93,6 +93,10 @@ public class PurchaseInfo {
         return product;
     }
 
+    /**
+     * Returns the obfuscated account and profile IDs, or null when none were set in BillingFlowParams
+     */
+    @Nullable
     public AccountIdentifiers getAccountIdentifiers() {
         return accountIdentifiers;
     }
@@ -101,6 +105,10 @@ public class PurchaseInfo {
         return Collections.unmodifiableList(products);
     }
 
+    /**
+     * Returns the order ID, or null when the purchase is not completed yet (PENDING)
+     */
+    @Nullable
     public String getOrderId() {
         return orderId;
     }
