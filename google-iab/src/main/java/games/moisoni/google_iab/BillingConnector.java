@@ -1453,6 +1453,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Checks purchase state synchronously by ProductInfo
+     * <p>
+     * Same as isPurchased(productInfo.getProduct())
      */
     public final PurchasedResult isPurchased(@NonNull ProductInfo productInfo) {
         return isPurchased(productInfo.getProduct());
@@ -1460,26 +1462,39 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Checks purchase state synchronously by product ID
+     * <p>
+     * Answers from the last successful purchases query of the product's type (in-app products or subscriptions),
+     * so it also answers while product details are unavailable (e.g. the app started offline, or the product
+     * was deactivated in Play Console) and while the billing client reconnects
+     *
+     * @param productId - is the product ID to check
+     * @return YES or NO once purchases of the product's type were fetched (NO also for a PENDING purchase),
+     * PURCHASED_PRODUCTS_NOT_FETCHED_YET while connected and purchases of the product's type were not fetched yet,
+     * CLIENT_NOT_READY while not connected and purchases of the product's type were not fetched yet, or after release()
      */
     public final PurchasedResult isPurchased(String productId) {
+        if (isReleased) {
+            return PurchasedResult.CLIENT_NOT_READY;
+        }
+
         // Check the fetch state of this product's type only (unknown product IDs are treated as in-app)
         boolean isSubscription = findSkuProductType(productId) == SkuProductType.SUBSCRIPTION;
         boolean fetchedPurchasesOfType = isSubscription ? fetchedSubsPurchases : fetchedInAppPurchases;
 
-        if (!isReady()) {
-            return PurchasedResult.CLIENT_NOT_READY;
-        } else if (!fetchedPurchasesOfType) {
-            return PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET;
-        } else {
-            synchronized (purchasedProductsSync) {
-                for (PurchaseInfo purchaseInfo : purchasedProductsList) {
-                    if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPurchased()) {
-                        return PurchasedResult.YES;
-                    }
+        if (!fetchedPurchasesOfType) {
+            // Connected means the purchases query is running (or failed and is retried on the next refresh)
+            return isConnected ? PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET : PurchasedResult.CLIENT_NOT_READY;
+        }
+
+        // Owned purchases are known even without product details or while reconnecting
+        synchronized (purchasedProductsSync) {
+            for (PurchaseInfo purchaseInfo : purchasedProductsList) {
+                if (purchaseInfo.getProduct().equals(productId) && purchaseInfo.isPurchased()) {
+                    return PurchasedResult.YES;
                 }
             }
-            return PurchasedResult.NO;
         }
+        return PurchasedResult.NO;
     }
 
     /**
