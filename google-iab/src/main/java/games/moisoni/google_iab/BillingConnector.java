@@ -43,6 +43,7 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.UnfetchedProduct;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -642,12 +643,19 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     foundProductIds.add(details.getProductId());
                 }
 
+                // Play Billing reports why each product was not returned
+                Map<String, Integer> unfetchedStatusCodes = new HashMap<>();
+                List<UnfetchedProduct> unfetchedProducts = productDetailsResult.getUnfetchedProductList();
+                for (UnfetchedProduct unfetchedProduct : unfetchedProducts) {
+                    unfetchedStatusCodes.put(unfetchedProduct.getProductId(), unfetchedProduct.getStatusCode());
+                }
+
                 for (String productId : productList) {
                     if (!foundProductIds.contains(productId)) {
-                        Log("Error: Product ID '" + productId + "' not found. " +
-                                "Make sure it is configured correctly in the Play Console");
+                        String errorMessage = "Product ID '" + productId + "' " + findUnfetchedProductReason(unfetchedStatusCodes.get(productId));
+                        Log("Query Product Details: " + errorMessage);
                         postBillingEvent(listener -> listener.onProductQueryError(productId, new BillingResponse(ErrorType.PRODUCT_ID_QUERY_FAILED,
-                                "Product ID '" + productId + "' not found", defaultResponseCode)));
+                                errorMessage, defaultResponseCode)));
                     }
                 }
 
@@ -687,6 +695,31 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 fetchPurchasedProducts();
             }
         });
+    }
+
+    /**
+     * Returns why the details of a product were not returned by Play Billing
+     *
+     * @param statusCode - is the UnfetchedProduct status code, or null if Play Billing did not report the product
+     */
+    @NonNull
+    private String findUnfetchedProductReason(@Nullable Integer statusCode) {
+        if (statusCode == null) {
+            return "not found. Make sure it is configured correctly in the Play Console";
+        }
+
+        switch (statusCode) {
+            case UnfetchedProduct.StatusCode.PRODUCT_NOT_FOUND:
+                return "not found. Make sure it exists and is active in the Play Console";
+            case UnfetchedProduct.StatusCode.INVALID_PRODUCT_ID_FORMAT:
+                return "has an invalid format. Make sure it matches the product ID in the Play Console";
+            case UnfetchedProduct.StatusCode.NO_ELIGIBLE_OFFER:
+                return "has no offer the user is eligible for";
+            case UnfetchedProduct.StatusCode.UNKNOWN:
+                return "could not be fetched for an unknown reason";
+            default:
+                return "could not be fetched (status code: " + statusCode + ")";
+        }
     }
 
     /**

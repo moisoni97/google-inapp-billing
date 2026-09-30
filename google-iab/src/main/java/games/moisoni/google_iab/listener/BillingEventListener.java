@@ -55,11 +55,14 @@ public interface BillingEventListener {
     void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response);
 
     /**
-     * Callback will be triggered when a specific product ID is not found during a query
+     * Callback will be triggered when the details of a specific product ID are not returned by a query
      * This is useful for identifying configuration errors in the Play Console
+     * <p>
+     * The response message contains the reason reported by Google Play: the product was not found (not created or not active),
+     * its ID has an invalid format, or the user is not eligible for any of its offers
      *
-     * @param productId - the product ID that was not found
-     * @param response  - provides information about the error
+     * @param productId - the product ID that was not returned
+     * @param response  - provides information about the error (ErrorType.PRODUCT_ID_QUERY_FAILED)
      */
     void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response);
 }
