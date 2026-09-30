@@ -103,7 +103,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private final Object purchasedProductsSync = new Object(); // Object for thread safety
 
     private final AtomicInteger productDetailsQueriesPending = new AtomicInteger(0);
-    private final AtomicInteger purchaseQueriesPending = new AtomicInteger(0);
 
     // Purchase tokens with a consume/acknowledge request in progress or already completed by this instance
     // Prevents duplicate requests and callbacks when purchase flows overlap (e.g. a purchase update during a purchases query)
@@ -116,7 +115,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private final AtomicBoolean isConnecting = new AtomicBoolean(false);
 
     private volatile boolean isConnected = false;
-    private volatile boolean fetchedPurchasedProducts = false;
+
+    // Tracked per product type so one query does not wait for (or hide the failure of) the other
+    // Only set by a successful query and never reset, so later refreshes keep the last known state
+    private volatile boolean fetchedInAppPurchases = false;
+    private volatile boolean fetchedSubsPurchases = false;
 
     /**
      * BillingConnector public constructor
@@ -669,9 +672,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private void fetchPurchasedProducts() {
         if (billingClient.isReady()) {
-            boolean isSubsSupported = isSubscriptionSupported() == SupportState.SUPPORTED;
-            int queryCount = isSubsSupported ? 2 : 1;
-            purchaseQueriesPending.set(queryCount);
+            SupportState subsSupportState = isSubscriptionSupported();
+            boolean isSubsSupported = subsSupportState == SupportState.SUPPORTED;
+
+            // Devices without subscription support cannot own subscriptions
+            if (subsSupportState == SupportState.NOT_SUPPORTED) {
+                fetchedSubsPurchases = true;
+            }
 
             billingClient.queryPurchasesAsync(
                     QueryPurchasesParams.newBuilder().setProductType(INAPP).build(),
@@ -688,10 +695,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             Log("Query IN-APP Purchases: failed with response code: " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
                             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
                                     new BillingResponse(ErrorType.FETCH_PURCHASED_PRODUCTS_ERROR, billingResult)));
-
-                            if (purchaseQueriesPending.decrementAndGet() == 0) {
-                                fetchedPurchasedProducts = true;
-                            }
                         }
                     }
             );
@@ -713,10 +716,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
                                 Log("Query SUBS Purchases: failed with response code: " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
                                 postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
                                         new BillingResponse(ErrorType.FETCH_PURCHASED_PRODUCTS_ERROR, billingResult)));
-
-                                if (purchaseQueriesPending.decrementAndGet() == 0) {
-                                    fetchedPurchasedProducts = true;
-                                }
                             }
                         }
                 );
@@ -840,10 +839,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         if (purchasedProductsFetched) {
-            postBillingEvent(listener -> listener.onPurchasedProductsFetched(productType, signatureValidPurchases));
-            if (purchaseQueriesPending.decrementAndGet() == 0) {
-                fetchedPurchasedProducts = true;
+            // Mark as fetched before posting, so isPurchased() is accurate inside onPurchasedProductsFetched
+            if (productType == ProductType.INAPP) {
+                fetchedInAppPurchases = true;
+            } else if (productType == ProductType.SUBS) {
+                fetchedSubsPurchases = true;
             }
+
+            postBillingEvent(listener -> listener.onPurchasedProductsFetched(productType, signatureValidPurchases));
         } else if (!signatureValidPurchases.isEmpty()) {
             // Skip the callback when every purchase was rejected, the errors were already reported
             postBillingEvent(listener -> listener.onProductsPurchased(signatureValidPurchases));
@@ -1249,9 +1252,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Checks purchase state synchronously by product ID
      */
     public final PurchasedResult isPurchased(String productId) {
+        // Check the fetch state of this product's type only (unknown product IDs are treated as in-app)
+        boolean isSubscription = findSkuProductType(productId) == SkuProductType.SUBSCRIPTION;
+        boolean fetchedPurchasesOfType = isSubscription ? fetchedSubsPurchases : fetchedInAppPurchases;
+
         if (!isReady()) {
             return PurchasedResult.CLIENT_NOT_READY;
-        } else if (!fetchedPurchasedProducts) {
+        } else if (!fetchedPurchasesOfType) {
             return PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET;
         } else {
             synchronized (purchasedProductsSync) {
