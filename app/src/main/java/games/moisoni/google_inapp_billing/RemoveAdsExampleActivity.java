@@ -12,6 +12,7 @@ import java.util.List;
 
 import games.moisoni.google_iab.BillingConnector;
 import games.moisoni.google_iab.listener.BillingEventListener;
+import games.moisoni.google_iab.status.PurchasedResult;
 import games.moisoni.google_iab.type.ProductType;
 import games.moisoni.google_iab.model.BillingResponse;
 import games.moisoni.google_iab.model.ProductInfo;
@@ -100,7 +101,10 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
                     SharedPrefsHelper.putBoolean("userPrefersAdFree", true);
 
                     Toast.makeText(RemoveAdsExampleActivity.this, "The previous purchase was successfully restored.", Toast.LENGTH_SHORT).show();
-                } else if (!isOwned && userPrefersAdFree) {
+                } else if (!isOwned && userPrefersAdFree
+                        && billingConnector.isPurchased(getString(R.string.remove_ads_play_console_id)) == PurchasedResult.NO) {
+                    // This callback is triggered separately for in-app products and subscriptions,
+                    // so the product missing from "purchases" is not enough: isPurchased() confirms it's no longer owned
                     // The product is no longer owned (e.g. refunded), so ads are shown again
                     userPrefersAdFree = false;
                     SharedPrefsHelper.putBoolean("userPrefersAdFree", false);
