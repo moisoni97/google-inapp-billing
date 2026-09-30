@@ -32,19 +32,20 @@ class Security {
      * @param base64PublicKey the base64-encoded public key to use for verifying
      * @param signedData      the signed JSON string (signed, not encrypted)
      * @param signature       the signature for the data, signed with the private key
+     * @param shouldLog       whether verification failures should be printed to logcat
      */
-    static public boolean verifyPurchase(String base64PublicKey, String signedData, String signature) {
+    static public boolean verifyPurchase(String base64PublicKey, String signedData, String signature, boolean shouldLog) {
         if ((TextUtils.isEmpty(signedData) || TextUtils.isEmpty(base64PublicKey)
                 || TextUtils.isEmpty(signature))
         ) {
-            Log.w(TAG, "Purchase verification failed: missing data.");
+            if (shouldLog) Log.w(TAG, "Purchase verification failed: missing data.");
             return false;
         }
         try {
             PublicKey key = generatePublicKey(base64PublicKey);
-            return verify(key, signedData, signature);
+            return verify(key, signedData, signature, shouldLog);
         } catch (IOException e) {
-            Log.e(TAG, "Error generating PublicKey from encoded key: " + e.getMessage());
+            if (shouldLog) Log.e(TAG, "Error generating PublicKey from encoded key: " + e.getMessage());
             return false;
         }
     }
@@ -65,13 +66,10 @@ class Security {
             // "RSA" is guaranteed to be available
             throw new RuntimeException(e);
         } catch (InvalidKeySpecException e) {
-            String msg = "Invalid key specification: " + e;
-            Log.w(TAG, msg);
-            throw new IOException(msg);
+            // Logged by the caller, together with the rest of the verification failure
+            throw new IOException("Invalid key specification: " + e);
         } catch (IllegalArgumentException e) {
-            String msg = "Base64 decoding failed for public key: " + e;
-            Log.w(TAG, msg);
-            throw new IOException(msg);
+            throw new IOException("Base64 decoding failed for public key: " + e);
         }
     }
 
@@ -82,15 +80,16 @@ class Security {
      * @param publicKey  public key associated with the developer account
      * @param signedData signed data from server
      * @param signature  server signature
+     * @param shouldLog  whether verification failures should be printed to logcat
      * @return true if the data and signature match
      */
     @NonNull
-    static private Boolean verify(PublicKey publicKey, String signedData, String signature) {
+    static private Boolean verify(PublicKey publicKey, String signedData, String signature, boolean shouldLog) {
         byte[] signatureBytes;
         try {
             signatureBytes = Base64.decode(signature, Base64.DEFAULT);
         } catch (IllegalArgumentException e) {
-            Log.w(TAG, "Base64 decoding failed.");
+            if (shouldLog) Log.w(TAG, "Base64 decoding failed.");
             return false;
         }
         try {
@@ -98,7 +97,7 @@ class Security {
             signatureAlgorithm.initVerify(publicKey);
             signatureAlgorithm.update(signedData.getBytes(StandardCharsets.UTF_8));
             if (!signatureAlgorithm.verify(signatureBytes)) {
-                Log.w(TAG, "Signature verification failed...");
+                if (shouldLog) Log.w(TAG, "Signature verification failed...");
                 return false;
             }
             return true;
@@ -106,9 +105,9 @@ class Security {
             // "RSA" is guaranteed to be available
             throw new RuntimeException(e);
         } catch (InvalidKeyException e) {
-            Log.e(TAG, "Invalid key specification.");
+            if (shouldLog) Log.e(TAG, "Invalid key specification.");
         } catch (SignatureException e) {
-            Log.e(TAG, "Signature exception.");
+            if (shouldLog) Log.e(TAG, "Signature exception.");
         }
         return false;
     }

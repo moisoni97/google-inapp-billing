@@ -717,6 +717,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
         for (Purchase purchase : allPurchases) {
             if (isPurchaseSignatureValid(purchase)) {
                 validPurchases.add(purchase);
+            } else {
+                // Report rejected purchases so a wrong license key or a tampered purchase does not fail silently
+                String rejectedProducts = purchase.getProducts().toString();
+                Log("Handling purchases: signature verification failed for products: " + rejectedProducts +
+                        ". Make sure the license key matches the one from Play Console");
+
+                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.SIGNATURE_VERIFICATION_FAILED,
+                        "Purchase signature verification failed for products: " + rejectedProducts, defaultResponseCode)));
             }
         }
 
@@ -774,7 +782,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
             if (purchaseQueriesPending.decrementAndGet() == 0) {
                 fetchedPurchasedProducts = true;
             }
-        } else {
+        } else if (!signatureValidPurchases.isEmpty()) {
+            // Skip the callback when every purchase was rejected, the errors were already reported
             postBillingEvent(listener -> listener.onProductsPurchased(signatureValidPurchases));
         }
 
@@ -1177,7 +1186,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (base64Key == null || base64Key.trim().isEmpty()) {
             return true;
         }
-        return Security.verifyPurchase(base64Key, purchase.getOriginalJson(), purchase.getSignature());
+        return Security.verifyPurchase(base64Key, purchase.getOriginalJson(), purchase.getSignature(), shouldEnableLogging);
     }
 
     /**
