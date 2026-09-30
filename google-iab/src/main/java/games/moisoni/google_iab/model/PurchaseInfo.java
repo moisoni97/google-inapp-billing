@@ -1,6 +1,7 @@
 package games.moisoni.google_iab.model;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.android.billingclient.api.AccountIdentifiers;
 import com.android.billingclient.api.Purchase;
@@ -38,10 +39,22 @@ public class PurchaseInfo {
     private final boolean isAutoRenewing;
 
     public PurchaseInfo(@NonNull ProductInfo productInfo, @NonNull Purchase purchase) {
+        this(productInfo.getSkuProductType(), productInfo.getProduct(), productInfo, purchase);
+    }
+
+    /**
+     * Creates a PurchaseInfo for an owned product whose details are not available
+     * (e.g. the product was deactivated in Play Console or its details query failed)
+     */
+    public PurchaseInfo(@NonNull SkuProductType skuProductType, @NonNull String product, @NonNull Purchase purchase) {
+        this(skuProductType, product, null, purchase);
+    }
+
+    private PurchaseInfo(@NonNull SkuProductType skuProductType, @NonNull String product, @Nullable ProductInfo productInfo, @NonNull Purchase purchase) {
         this.productInfo = productInfo;
         this.purchase = purchase;
-        this.product = productInfo.getProduct();
-        this.skuProductType = productInfo.getSkuProductType();
+        this.product = product;
+        this.skuProductType = skuProductType;
         this.accountIdentifiers = purchase.getAccountIdentifiers();
         this.products = purchase.getProducts();
         this.orderId = purchase.getOrderId();
@@ -61,6 +74,13 @@ public class PurchaseInfo {
         return skuProductType;
     }
 
+    /**
+     * Returns the product details of this purchase
+     * <p>
+     * Can be null when Play Console no longer returns details for an owned product
+     * (e.g. the product was deactivated) or when the product details query failed
+     */
+    @Nullable
     public ProductInfo getProductInfo() {
         return productInfo;
     }

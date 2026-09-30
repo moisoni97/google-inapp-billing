@@ -314,6 +314,30 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
+     * Returns a boolean state of the purchase before consuming or acknowledging it
+     * <p>
+     * Only requires a connected billing client, not fetched product details,
+     * so owned products without available details can still be consumed or acknowledged
+     *
+     * @param purchaseInfo - is the purchase that has to be checked
+     */
+    private boolean checkPurchaseBeforeInteraction(@NonNull PurchaseInfo purchaseInfo) {
+        if (billingClient == null || !billingClient.isReady()) {
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
+                    "Client is not ready yet", defaultResponseCode)));
+            return false;
+        }
+
+        String purchaseToken = purchaseInfo.getPurchaseToken();
+        if (purchaseToken == null || purchaseToken.trim().isEmpty()) {
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Purchase token cannot be null or empty", defaultResponseCode)));
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Maps Google Billing response codes to ErrorType
      */
     private ErrorType findErrorType(int responseCode) {
@@ -588,7 +612,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         switch (productDetails.getProductType()) {
             case INAPP:
-                boolean consumable = isProductIdConsumable(productDetails.getProductId());
+                boolean consumable = findSkuProductType(productDetails.getProductId()) == SkuProductType.CONSUMABLE;
                 if (consumable) {
                     skuProductType = SkuProductType.CONSUMABLE;
                 } else {
@@ -605,12 +629,33 @@ public class BillingConnector implements DefaultLifecycleObserver {
         return new ProductInfo(skuProductType, productDetails);
     }
 
-    private boolean isProductIdConsumable(String productId) {
-        if (consumableIds == null || productId == null) {
-            return false;
+    /**
+     * Returns the product type based on the product ID lists provided by the developer
+     * <p>
+     * Does not rely on ProductDetails, so owned products can be handled even when their details are unavailable
+     *
+     * @param productId - is the product ID to look up
+     * @return the product type, or null if the product ID is not in any list
+     */
+    @Nullable
+    private SkuProductType findSkuProductType(String productId) {
+        if (productId == null) {
+            return null;
         }
 
-        return consumableIds.contains(productId);
+        if (consumableIds != null && consumableIds.contains(productId)) {
+            return SkuProductType.CONSUMABLE;
+        }
+
+        if (nonConsumableIds != null && nonConsumableIds.contains(productId)) {
+            return SkuProductType.NON_CONSUMABLE;
+        }
+
+        if (subscriptionIds != null && subscriptionIds.contains(productId)) {
+            return SkuProductType.SUBSCRIPTION;
+        }
+
+        return null;
     }
 
     /**
@@ -739,6 +784,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 if (foundProductInfo != null) {
                     PurchaseInfo purchaseInfo = new PurchaseInfo(foundProductInfo, purchase);
                     signatureValidPurchases.add(purchaseInfo);
+                    continue;
+                }
+
+                // Keep owned products even without details (deactivated product or failed details query)
+                // Otherwise the user loses the entitlement and unacknowledged purchases get refunded
+                SkuProductType skuProductType = findSkuProductType(productId);
+                if (skuProductType != null) {
+                    Log("Handling purchases: product details unavailable for owned product: " + productId);
+                    signatureValidPurchases.add(new PurchaseInfo(skuProductType, productId, purchase));
+                } else {
+                    Log("Handling purchases: skipping product: " + productId + " because it is not in any product ID list");
                 }
             }
         }
@@ -818,7 +874,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * They have to be consumed within 3 days, otherwise Google will refund the products
      */
     public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
-        if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
+        if (checkPurchaseBeforeInteraction(purchaseInfo)) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
                     ConsumeParams consumeParams = ConsumeParams.newBuilder()
@@ -854,7 +910,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * This will avoid refunding for these products to users by Google
      */
     public void acknowledgePurchase(@NonNull PurchaseInfo purchaseInfo) {
-        if (checkProductBeforeInteraction(purchaseInfo.getProduct())) {
+        if (checkPurchaseBeforeInteraction(purchaseInfo)) {
             switch (purchaseInfo.getSkuProductType()) {
                 case NON_CONSUMABLE:
                 case SUBSCRIPTION:
