@@ -113,6 +113,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
     // A purchases query sent before the consumption finished can still return them, they must not be listed as owned again
     private final Set<String> consumedPurchaseTokens = new HashSet<>();
 
+    // Purchase tokens of PENDING purchases already reported by the automatic consumption/acknowledgment
+    // Purchases are refreshed on every resume and a PENDING payment can a long time to clear, so the warning is reported once
+    private final Set<String> warnedPendingPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
     private boolean shouldEnableLogging = false;
@@ -937,6 +941,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
         for (PurchaseInfo purchaseInfo : signatureValidPurchases) {
             String token = purchaseInfo.getPurchaseToken();
 
+            // A PENDING purchase can't be consumed/acknowledged yet, its CONSUME_WARNING / ACKNOWLEDGE_WARNING is reported only once
+            // It is processed again by a later refresh once its state becomes PURCHASED
+            if (purchaseInfo.isPending() && !warnedPendingPurchaseTokens.add(token)) {
+                Log("Handling purchases: purchase is still PENDING: " + purchaseInfo.getProduct());
+                continue;
+            }
+
             if (shouldAutoConsume && purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 if (processedConsumeTokens.add(token)) {
                     consumePurchase(purchaseInfo);
@@ -959,6 +970,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * <p>
      * Consumable products might be bought/consumed by users multiple times (for e.g. diamonds, coins etc.)
      * They have to be consumed within 3 days, otherwise Google will refund the products
+     * <p>
+     * A PENDING purchase can't be consumed yet, CONSUME_WARNING is reported instead
      */
     public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
@@ -1012,6 +1025,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Acknowledge non-consumable products & subscriptions
      * <p>
      * This will avoid refunding for these products to users by Google
+     * <p>
+     * A PENDING purchase can't be acknowledged yet, ACKNOWLEDGE_WARNING is reported instead
      */
     public void acknowledgePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
