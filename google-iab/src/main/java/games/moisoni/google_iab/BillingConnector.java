@@ -45,12 +45,14 @@ import com.android.billingclient.api.QueryPurchasesParams;
 import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,6 +104,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private final AtomicInteger productDetailsQueriesPending = new AtomicInteger(0);
     private final AtomicInteger purchaseQueriesPending = new AtomicInteger(0);
+
+    // Purchase tokens with a consume/acknowledge request in progress or already completed by this instance
+    // Prevents duplicate requests and callbacks when purchase flows overlap (e.g. a purchase update during a purchases query)
+    private final Set<String> handledPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
@@ -877,16 +883,31 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
             if (purchaseInfo.getSkuProductType() == SkuProductType.CONSUMABLE) {
                 if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                    String token = purchaseInfo.getPurchaseToken();
+                    if (!handledPurchaseTokens.add(token)) {
+                        Log("Handling consumables: purchase is already being consumed or was consumed: " + purchaseInfo.getProduct());
+                        return;
+                    }
+
                     ConsumeParams consumeParams = ConsumeParams.newBuilder()
-                            .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
+                            .setPurchaseToken(token).build();
 
                     billingClient.consumeAsync(consumeParams, (billingResult, purchaseToken) -> {
                         if (billingResult.getResponseCode() == OK) {
+                            // Remove every entry of this purchase (multi-product purchases share the same token)
                             synchronized (purchasedProductsSync) {
-                                purchasedProductsList.remove(purchaseInfo);
+                                Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
+                                while (iterator.hasNext()) {
+                                    if (iterator.next().getPurchaseToken().equals(token)) {
+                                        iterator.remove();
+                                    }
+                                }
                             }
                             postBillingEvent(listener -> listener.onPurchaseConsumed(purchaseInfo));
                         } else {
+                            // Allow a later retry
+                            handledPurchaseTokens.remove(token);
+
                             Log("Handling consumables: error during consumption attempt: " + billingResult.getDebugMessage());
 
                             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
@@ -916,13 +937,22 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 case SUBSCRIPTION:
                     if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
                         if (!purchaseInfo.getPurchase().isAcknowledged()) {
+                            String token = purchaseInfo.getPurchaseToken();
+                            if (!handledPurchaseTokens.add(token)) {
+                                Log("Handling acknowledges: purchase is already being acknowledged or was acknowledged: " + purchaseInfo.getProduct());
+                                return;
+                            }
+
                             AcknowledgePurchaseParams acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                                    .setPurchaseToken(purchaseInfo.getPurchase().getPurchaseToken()).build();
+                                    .setPurchaseToken(token).build();
 
                             billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult -> {
                                 if (billingResult.getResponseCode() == OK) {
                                     postBillingEvent(listener -> listener.onPurchaseAcknowledged(purchaseInfo));
                                 } else {
+                                    // Allow a later retry
+                                    handledPurchaseTokens.remove(token);
+
                                     Log("Handling acknowledges: error during acknowledgment attempt: " + billingResult.getDebugMessage());
 
                                     postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
