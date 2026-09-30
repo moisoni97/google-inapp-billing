@@ -114,7 +114,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
     private final Set<String> consumedPurchaseTokens = new HashSet<>();
 
     // Purchase tokens of PENDING purchases already reported by the automatic consumption/acknowledgment
-    // Purchases are refreshed on every resume and a PENDING payment can a long time to clear, so the warning is reported once
+    // Purchases are refreshed on every resume and a PENDING payment can take a long time to clear, so the warning is reported once
     private final Set<String> warnedPendingPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private boolean shouldAutoAcknowledge = false;
@@ -143,12 +143,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
     public BillingConnector(@NonNull Context context, String base64Key, @Nullable Lifecycle lifecycle) {
         this.context = context.getApplicationContext();
         this.base64Key = base64Key;
+        this.uiHandler = new Handler(Looper.getMainLooper());
+        this.init();
+
         if (lifecycle != null) {
             this.lifecycle = lifecycle;
             lifecycle.addObserver(this);
         }
-        this.uiHandler = new Handler(Looper.getMainLooper());
-        this.init();
     }
 
     /**
@@ -391,6 +392,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
         if (allProductList.isEmpty()) {
             isConnecting.set(false);
             throw new IllegalArgumentException("At least one list of consumables, non-consumables or subscriptions is needed");
+        }
+
+        // Check for null product IDs, Play Billing would otherwise throw later, inside the connection callback
+        if (allProductList.contains(null)) {
+            isConnecting.set(false);
+            throw new IllegalArgumentException("Product IDs cannot be null");
         }
 
         // Check for duplicates product IDs
