@@ -3,6 +3,7 @@ package games.moisoni.google_iab;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.BILLING_UNAVAILABLE;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.DEVELOPER_ERROR;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ERROR;
+import static com.android.billingclient.api.BillingClient.BillingResponseCode.FEATURE_NOT_SUPPORTED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_NOT_OWNED;
 import static com.android.billingclient.api.BillingClient.BillingResponseCode.ITEM_UNAVAILABLE;
@@ -153,70 +154,31 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     private void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
-        switch (billingResult.getResponseCode()) {
-            case OK:
-                if (purchases != null) {
-                    processPurchases(ProductType.COMBINED, purchases, false);
-                }
-                break;
-            case USER_CANCELED:
-                Log("User pressed back or canceled a dialog." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.USER_CANCELED, billingResult)));
-                break;
-            case SERVICE_UNAVAILABLE:
-                Log("Network connection is down." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.SERVICE_UNAVAILABLE, billingResult)));
-                break;
-            case BILLING_UNAVAILABLE:
-                Log("Billing API version is not supported for the type requested." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.BILLING_UNAVAILABLE, billingResult)));
-                break;
-            case ITEM_UNAVAILABLE:
-                Log("Requested product is not available for purchase." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.ITEM_UNAVAILABLE, billingResult)));
-                break;
-            case DEVELOPER_ERROR:
-                Log("Invalid arguments provided to the API." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.DEVELOPER_ERROR, billingResult)));
-                break;
-            case ERROR:
-                Log("Fatal error during the API action." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.ERROR, billingResult)));
-                break;
-            case ITEM_ALREADY_OWNED:
-                Log("Failure to purchase since item is already owned." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.ITEM_ALREADY_OWNED, billingResult)));
+        int responseCode = billingResult.getResponseCode();
 
-                // Re-sync owned purchases, e.g. to consume a consumable that is still owned
-                refreshPurchases();
-                break;
-            case ITEM_NOT_OWNED:
-                Log("Failure to consume since item is not owned." + " Response code: " + billingResult.getResponseCode());
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.ITEM_NOT_OWNED, billingResult)));
-                break;
-            case SERVICE_DISCONNECTED:
-                Log("Initialization error: service disconnected/timeout. Trying to reconnect...");
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.CLIENT_DISCONNECTED, billingResult)));
-                break;
-            case NETWORK_ERROR:
-                Log("Initialization error: service network error. Trying to reconnect...");
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.NETWORK_ERROR, billingResult)));
-                break;
-            default:
-                Log("Initialization error: " + new BillingResponse(ErrorType.BILLING_ERROR, billingResult));
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                        new BillingResponse(ErrorType.BILLING_ERROR, billingResult)));
-                break;
+        if (responseCode == OK) {
+            if (purchases != null) {
+                processPurchases(ProductType.COMBINED, purchases, false);
+            } else {
+                Log("Purchase flow: finished with OK response but no purchases were returned");
+            }
+            return;
+        }
+
+        ErrorType errorType = findErrorType(responseCode);
+
+        if (responseCode == USER_CANCELED) {
+            Log("Purchase flow: user pressed back or canceled a dialog." + " Response code: " + responseCode);
+        } else {
+            Log("Purchase flow: failed -> " + new BillingResponse(errorType, billingResult));
+        }
+
+        postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                new BillingResponse(errorType, billingResult)));
+
+        // Re-sync owned purchases, e.g. to consume a consumable that is still owned
+        if (responseCode == ITEM_ALREADY_OWNED) {
+            refreshPurchases();
         }
     }
 
@@ -374,6 +336,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 return ErrorType.CLIENT_DISCONNECTED;
             case NETWORK_ERROR:
                 return ErrorType.NETWORK_ERROR;
+            case FEATURE_NOT_SUPPORTED:
+                return ErrorType.FEATURE_NOT_SUPPORTED;
             default:
                 return ErrorType.BILLING_ERROR;
         }
