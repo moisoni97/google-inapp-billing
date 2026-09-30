@@ -12,7 +12,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.github.hariprasanths.bounceview.BounceView;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import games.moisoni.google_iab.BillingConnector;
 import games.moisoni.google_iab.listener.BillingEventListener;
@@ -38,11 +40,9 @@ public class JavaSampleActivity extends AppCompatActivity {
 
     private BillingConnector billingConnector;
 
-    // List for example purposes to demonstrate how to manually acknowledge or consume purchases
-    private final List<PurchaseInfo> purchasedInfoList = new ArrayList<>();
-
-    // List for example purposes to demonstrate how to synchronously check a purchase state
-    private final List<ProductInfo> fetchedProductInfoList = new ArrayList<>();
+    // Fetched products (keyed by product ID) for example purposes to demonstrate how to synchronously check a purchase state
+    // The onProductsFetched callback is triggered again after a reconnection, so a product is replaced instead of being added twice
+    private final Map<String, ProductInfo> fetchedProducts = new LinkedHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,7 +105,7 @@ public class JavaSampleActivity extends AppCompatActivity {
 
                     //TODO - similarly check for other IDs
 
-                    fetchedProductInfoList.add(productInfo);
+                    fetchedProducts.put(productInfo.getProduct(), productInfo);
                 }
             }
 
@@ -172,8 +172,6 @@ public class JavaSampleActivity extends AppCompatActivity {
                     }
 
                     //TODO - similarly check for other IDs
-
-                    purchasedInfoList.add(purchaseInfo);
                 }
             }
 
@@ -413,7 +411,7 @@ public class JavaSampleActivity extends AppCompatActivity {
          *
          * To synchronously check a purchase state
          * */
-        for (ProductInfo productInfo : fetchedProductInfoList) {
+        for (ProductInfo productInfo : fetchedProducts.values()) {
             PurchasedResult purchasedResult = billingConnector.isPurchased(productInfo);
             if (purchasedResult == PurchasedResult.YES) {
                 //TODO - do something
@@ -505,18 +503,20 @@ public class JavaSampleActivity extends AppCompatActivity {
         /*
          * public void consumePurchase(PurchaseInfo purchaseInfo)
          *
-         * To consume consumable products
+         * To consume consumable products (only needed without autoConsume())
+         * Every owned purchase can be passed, the ones that are not consumables are ignored
          * */
-        for (PurchaseInfo purchaseInfo : purchasedInfoList) {
+        for (PurchaseInfo purchaseInfo : allPurchases) {
             billingConnector.consumePurchase(purchaseInfo);
         }
 
         /*
          * public void acknowledgePurchase(PurchaseInfo purchaseInfo)
          *
-         * To acknowledge non-consumable products & subscriptions
+         * To acknowledge non-consumable products & subscriptions (only needed without autoAcknowledge())
+         * Every owned purchase can be passed, consumables and already acknowledged purchases are ignored
          * */
-        for (PurchaseInfo purchaseInfo : purchasedInfoList) {
+        for (PurchaseInfo purchaseInfo : allPurchases) {
             billingConnector.acknowledgePurchase(purchaseInfo);
         }
 

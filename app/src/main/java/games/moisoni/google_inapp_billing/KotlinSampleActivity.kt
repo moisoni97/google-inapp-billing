@@ -38,8 +38,9 @@ class KotlinSampleActivity : AppCompatActivity() {
 
     private lateinit var billingConnector: BillingConnector
 
-    private val purchasedInfoList = mutableListOf<PurchaseInfo>()
-    private val fetchedProductInfoList = mutableListOf<ProductInfo>()
+    // Fetched products (keyed by product ID) for example purposes to demonstrate how to synchronously check a purchase state
+    // The onProductsFetched callback is triggered again after a reconnection, so a product is replaced instead of being added twice
+    private val fetchedProducts = linkedMapOf<String, ProductInfo>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.AppTheme)
@@ -113,7 +114,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
                     //TODO - similarly check for other IDs
 
-                    fetchedProductInfoList.add(productInfo)
+                    fetchedProducts[productInfo.product] = productInfo
                 }
             }
 
@@ -194,8 +195,6 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     //TODO - similarly check for other IDs
-
-                    purchasedInfoList.add(purchaseInfo)
                 }
             }
 
@@ -502,7 +501,7 @@ class KotlinSampleActivity : AppCompatActivity() {
          *
          * To synchronously check a purchase state
          * */
-        for (productInfo in fetchedProductInfoList) {
+        for (productInfo in fetchedProducts.values) {
             when (billingConnector.isPurchased(productInfo)) {
                 PurchasedResult.YES -> {
                     //TODO - do something
@@ -611,20 +610,22 @@ class KotlinSampleActivity : AppCompatActivity() {
         billingConnector.refreshPurchases()
 
         /*
-        * public void consumePurchase(PurchaseInfo purchaseInfo)
-        *
-        * To consume consumable products
-        * */
-        for (purchaseInfo in purchasedInfoList) {
+         * public void consumePurchase(PurchaseInfo purchaseInfo)
+         *
+         * To consume consumable products (only needed without autoConsume())
+         * Every owned purchase can be passed, the ones that are not consumables are ignored
+         * */
+        for (purchaseInfo in allPurchases) {
             billingConnector.consumePurchase(purchaseInfo)
         }
 
         /*
-        * public void acknowledgePurchase(PurchaseInfo purchaseInfo)
-        *
-        * To acknowledge non-consumable products & subscriptions
-        * */
-        for (purchaseInfo in purchasedInfoList) {
+         * public void acknowledgePurchase(PurchaseInfo purchaseInfo)
+         *
+         * To acknowledge non-consumable products & subscriptions (only needed without autoAcknowledge())
+         * Every owned purchase can be passed, consumables and already acknowledged purchases are ignored
+         * */
+        for (purchaseInfo in allPurchases) {
             billingConnector.acknowledgePurchase(purchaseInfo)
         }
 
