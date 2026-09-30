@@ -43,7 +43,6 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
-import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1110,7 +1109,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
-                .setProductDetailsParamsList(ImmutableList.of(productDetailsParams.build()))
+                .setProductDetailsParamsList(Collections.singletonList(productDetailsParams.build()))
                 .build();
 
         BillingResult billingResult = billingClient.launchBillingFlow(activity, billingFlowParams);
@@ -1384,7 +1383,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public List<PurchaseInfo> getPurchasedProductsList() {
         synchronized (purchasedProductsSync) {
-            return ImmutableList.copyOf(purchasedProductsList);
+            return List.copyOf(purchasedProductsList);
         }
     }
 

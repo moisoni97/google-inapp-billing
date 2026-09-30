@@ -1,2 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="games.moisoni.google_iab"/>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Lets isPlayStoreInstalled() see the Play Store package on Android 11+ (package visibility) -->
+    <queries>
+        <package android:name="com.android.vending" />
+    </queries>
+
+</manifest>
