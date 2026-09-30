@@ -157,6 +157,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 .build();
     }
 
+    /**
+     * Receives the result of every purchase flow
+     * <p>
+     * Also receives the errors returned immediately by BillingClient.launchBillingFlow()
+     * (Play Billing posts them here as well), so this is the only place where purchase flow errors are reported
+     */
     private void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
         int responseCode = billingResult.getResponseCode();
 
@@ -1146,16 +1152,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         BillingResult billingResult = billingClient.launchBillingFlow(activity, billingFlowParams);
 
-        int responseCode = billingResult.getResponseCode();
-        if (responseCode != OK) {
-            Log("Launch billing flow failed with response code: " + responseCode + " " + billingResult.getDebugMessage());
-            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                    new BillingResponse(findErrorType(responseCode), billingResult)));
-
-            // Re-sync owned purchases, e.g. to consume a consumable that is still owned
-            if (responseCode == ITEM_ALREADY_OWNED) {
-                refreshPurchases();
-            }
+        // Play Billing also posts this failure to onPurchasesUpdated, which reports it
+        // Reporting it here as well would trigger onBillingError twice
+        if (billingResult.getResponseCode() != OK) {
+            Log("Launch billing flow failed with response code: " + billingResult.getResponseCode() + " " + billingResult.getDebugMessage());
         }
     }
 
