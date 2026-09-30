@@ -1238,10 +1238,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
             lifecycle = null;
         }
 
-        if (billingClient != null && billingClient.isReady()) {
+        // End the connection in any state (not only when ready) so a connection still being established is not leaked
+        if (billingClient != null) {
             Log("BillingConnector instance release: ending connection...");
             billingClient.endConnection();
         }
+
+        isConnected = false;
 
         // Prevent memory leaks and NPEs from pending exponential backoff tasks after the lifecycle is destroyed
         uiHandler.removeCallbacksAndMessages(null);
