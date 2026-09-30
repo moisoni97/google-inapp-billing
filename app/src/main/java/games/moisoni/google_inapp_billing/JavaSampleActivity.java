@@ -136,11 +136,13 @@ public class JavaSampleActivity extends AppCompatActivity {
                     product = purchaseInfo.getProduct();
 
                     /*
-                     * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS in PURCHASED state
+                     * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS that are PURCHASED and acknowledged
                      *
                      * PENDING purchases are listed too, and CONSUMABLE products are granted in onPurchaseConsumed
+                     * Purchases that are not acknowledged yet are acknowledged by the library right after this callback,
+                     * they are granted in onPurchaseAcknowledged (Google refunds a purchase that can't be acknowledged)
                      * */
-                    if (product.equalsIgnoreCase("non_consumable_id_2") && purchaseInfo.isPurchased()) {
+                    if (product.equalsIgnoreCase("non_consumable_id_2") && purchaseInfo.isPurchased() && purchaseInfo.isAcknowledged()) {
                         //TODO - do something
                         Log.d("BillingConnector", "Purchased product fetched: " + product);
                         Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + product, Toast.LENGTH_SHORT).show();

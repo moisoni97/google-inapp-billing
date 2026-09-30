@@ -144,11 +144,13 @@ class KotlinSampleActivity : AppCompatActivity() {
                 }
 
                 /*
-                * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS in PURCHASED state
+                * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS that are PURCHASED and acknowledged
                 *
                 * PENDING purchases are listed too, and CONSUMABLE products are granted in onPurchaseConsumed
+                * Purchases that are not acknowledged yet are acknowledged by the library right after this callback,
+                * they are granted in onPurchaseAcknowledged (Google refunds a purchase that can't be acknowledged)
                 * */
-                purchases.filter { it.isPurchased }.forEach {
+                purchases.filter { it.isPurchased && it.isAcknowledged }.forEach {
                     when (it.product) {
                         "non_consumable_id_2" -> {
                             //TODO - do something
