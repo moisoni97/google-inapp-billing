@@ -110,6 +110,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
     // Prevents duplicate requests and callbacks when purchase flows overlap (e.g. a purchase update during a purchases query)
     private final Set<String> handledPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    // A purchases query sent before the consumption finished can still return them, they must not be listed as owned again
+    private final Set<String> consumedPurchaseTokens = new HashSet<>();
+
     private boolean shouldAutoAcknowledge = false;
     private boolean shouldAutoConsume = false;
     private boolean shouldEnableLogging = false;
@@ -865,6 +868,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         // Synchronize access to purchasedProductsList
         synchronized (purchasedProductsSync) {
+            // Drop purchases already consumed by this instance (the query may have been sent before the consumption finished)
+            Iterator<PurchaseInfo> consumedIterator = signatureValidPurchases.iterator();
+            while (consumedIterator.hasNext()) {
+                PurchaseInfo purchaseInfo = consumedIterator.next();
+                if (consumedPurchaseTokens.contains(purchaseInfo.getPurchaseToken())) {
+                    Log("Handling purchases: ignoring already consumed purchase: " + purchaseInfo.getProduct());
+                    consumedIterator.remove();
+                }
+            }
+
             // Clear existing purchases of this type when fetching (to avoid duplicates)
             if (purchasedProductsFetched) {
                 Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
@@ -958,6 +971,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                         if (billingResult.getResponseCode() == OK) {
                             // Remove every entry of this purchase (multi-product purchases share the same token)
                             synchronized (purchasedProductsSync) {
+                                consumedPurchaseTokens.add(token);
+
                                 Iterator<PurchaseInfo> iterator = purchasedProductsList.iterator();
                                 while (iterator.hasNext()) {
                                     if (iterator.next().getPurchaseToken().equals(token)) {
