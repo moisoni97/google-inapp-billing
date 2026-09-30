@@ -1031,84 +1031,99 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * The offer index represents the different offers in the subscription
      */
     private void purchase(Activity activity, String productId, int selectedOfferIndex) {
+        ProductDetails productDetails = findProductDetailsBeforePurchase(activity, productId);
+        if (productDetails == null) {
+            return;
+        }
+
+        String offerToken = null;
+
+        if (productDetails.getProductType().equals(SUBS)) {
+            // The purchase() method was called with a subscription ID
+            if (selectedOfferIndex == notAnOffer) {
+                Log("Product: " + productId + " is a subscription. Use subscribe() instead of purchase()");
+                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                        "Product " + productId + " is a subscription. Use subscribe() instead of purchase()", defaultResponseCode)));
+                return;
+            }
+
+            List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
+            if (offerDetails != null && selectedOfferIndex >= 0 && selectedOfferIndex < offerDetails.size()) {
+                // The offer index represents the different offers in the subscription
+                // Offer index is only available for subscriptions starting with Google Billing v5+
+                offerToken = offerDetails.get(selectedOfferIndex).getOfferToken();
+            }
+            // Handle invalid selectedOfferIndex for subscriptions
+            else {
+                Log("Invalid selectedOfferIndex: " + selectedOfferIndex + " for product: " + productId +
+                        ". Offer details size: " + (offerDetails != null ? offerDetails.size() : "null"));
+                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                        "Invalid subscription offer index provided", defaultResponseCode)));
+                return; // Prevent proceeding with an invalid index
+            }
+        }
+
+        launchBillingFlow(activity, productDetails, offerToken);
+    }
+
+    /**
+     * Validates the activity and the product before launching a billing flow
+     *
+     * @return the product details, or null if the billing flow can not be launched (the error is already reported)
+     */
+    @Nullable
+    private ProductDetails findProductDetailsBeforePurchase(Activity activity, String productId) {
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
             Log("Billing client can not launch billing flow because activity is invalid");
             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
                     "Activity is null or finishing", defaultResponseCode)));
-            return;
+            return null;
         }
 
-        if (checkProductBeforeInteraction(productId)) {
-            ProductInfo foundProductInfo = null;
-            for (ProductInfo productInfo : fetchedProductInfoList) {
-                if (productInfo.getProduct().equals(productId)) {
-                    foundProductInfo = productInfo;
-                    break;
-                }
+        if (!checkProductBeforeInteraction(productId)) {
+            return null;
+        }
+
+        for (ProductInfo productInfo : fetchedProductInfoList) {
+            if (productInfo.getProduct().equals(productId)) {
+                return productInfo.getProductDetails();
             }
+        }
 
-            if (foundProductInfo != null) {
-                ProductDetails productDetails = foundProductInfo.getProductDetails();
-                ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
+        Log("Billing client can not launch billing flow because product details are missing for product: " + productId);
+        postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
+                "Product details not found for " + productId, defaultResponseCode)));
+        return null;
+    }
 
-                if (productDetails.getProductType().equals(SUBS)) {
-                    if (selectedOfferIndex == notAnOffer) {
-                        Log("Product: " + productId + " is a subscription. Use subscribe() instead of purchase()");
-                        postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
-                                "Product " + productId + " is a subscription. Use subscribe() instead of purchase()", defaultResponseCode)));
-                        return;
-                    }
+    /**
+     * Launches the Google Play billing flow for a single product
+     *
+     * @param offerToken - selects the subscription base plan / offer, null for in-app products
+     */
+    private void launchBillingFlow(@NonNull Activity activity, @NonNull ProductDetails productDetails, @Nullable String offerToken) {
+        BillingFlowParams.ProductDetailsParams.Builder productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(productDetails);
 
-                    List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
-                    if (offerDetails != null && selectedOfferIndex >= 0 && selectedOfferIndex < offerDetails.size()) {
-                        // The offer index represents the different offers in the subscription
-                        // Offer index is only available for subscriptions starting with Google Billing v5+
-                        productDetailsParamsList = ImmutableList.of(
-                                BillingFlowParams.ProductDetailsParams.newBuilder()
-                                        .setProductDetails(productDetails)
-                                        .setOfferToken(offerDetails.get(selectedOfferIndex).getOfferToken())
-                                        .build()
-                        );
-                    }
-                    // Handle invalid selectedOfferIndex for subscriptions
-                    else {
-                        Log("Invalid selectedOfferIndex: " + selectedOfferIndex + " for product: " + productId +
-                                ". Offer details size: " + (offerDetails != null ? offerDetails.size() : "null"));
-                        postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
-                                "Invalid subscription offer index provided", defaultResponseCode)));
-                        return; // Prevent proceeding with an invalid index
-                    }
-                }
-                // Handle IN-APP products (consumable or non-consumable)
-                else {
-                    productDetailsParamsList = ImmutableList.of(
-                            BillingFlowParams.ProductDetailsParams.newBuilder()
-                                    .setProductDetails(productDetails)
-                                    .build()
-                    );
-                }
+        if (offerToken != null) {
+            productDetailsParams.setOfferToken(offerToken);
+        }
 
-                BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
-                        .setProductDetailsParamsList(productDetailsParamsList)
-                        .build();
+        BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(ImmutableList.of(productDetailsParams.build()))
+                .build();
 
-                BillingResult billingResult = billingClient.launchBillingFlow(activity, billingFlowParams);
+        BillingResult billingResult = billingClient.launchBillingFlow(activity, billingFlowParams);
 
-                int responseCode = billingResult.getResponseCode();
-                if (responseCode != OK) {
-                    Log("Launch billing flow failed with response code: " + responseCode + " " + billingResult.getDebugMessage());
-                    postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
-                            new BillingResponse(findErrorType(responseCode), billingResult)));
+        int responseCode = billingResult.getResponseCode();
+        if (responseCode != OK) {
+            Log("Launch billing flow failed with response code: " + responseCode + " " + billingResult.getDebugMessage());
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
+                    new BillingResponse(findErrorType(responseCode), billingResult)));
 
-                    // Re-sync owned purchases, e.g. to consume a consumable that is still owned
-                    if (responseCode == ITEM_ALREADY_OWNED) {
-                        refreshPurchases();
-                    }
-                }
-            } else {
-                Log("Billing client can not launch billing flow because product details are missing for product: " + productId);
-                postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.PRODUCT_NOT_EXIST,
-                        "Product details not found for " + productId, defaultResponseCode)));
+            // Re-sync owned purchases, e.g. to consume a consumable that is still owned
+            if (responseCode == ITEM_ALREADY_OWNED) {
+                refreshPurchases();
             }
         }
     }
@@ -1133,6 +1148,75 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     public final void subscribe(Activity activity, String productId) {
         purchase(activity, productId, 0);
+    }
+
+    /**
+     * Called to purchase a subscription with a specific base plan or offer
+     * <p>
+     * Safer than selecting an offer by index, since Google Play does not guarantee the order of offers
+     * The available IDs can be read from ProductInfo.getSubscriptionOfferDetails() (getBasePlanId() / getOfferId())
+     * <p>
+     * Google Play only returns offers the user is eligible for (e.g. a free trial that was already used is not returned)
+     *
+     * @param basePlanId - is the base plan ID from Play Console
+     * @param offerId    - is the offer ID from Play Console, or null to purchase the base plan without an offer
+     */
+    public final void subscribe(Activity activity, String productId, String basePlanId, @Nullable String offerId) {
+        ProductDetails productDetails = findProductDetailsBeforePurchase(activity, productId);
+        if (productDetails == null) {
+            return;
+        }
+
+        if (!productDetails.getProductType().equals(SUBS)) {
+            Log("Product: " + productId + " is not a subscription. Use purchase() instead of subscribe()");
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Product " + productId + " is not a subscription. Use purchase() instead of subscribe()", defaultResponseCode)));
+            return;
+        }
+
+        if (basePlanId == null || basePlanId.trim().isEmpty()) {
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Base plan ID cannot be null or empty", defaultResponseCode)));
+            return;
+        }
+
+        boolean basePlanFound = false;
+        String offerToken = null;
+
+        List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
+        if (offerDetails != null) {
+            for (ProductDetails.SubscriptionOfferDetails details : offerDetails) {
+                if (!basePlanId.equals(details.getBasePlanId())) {
+                    continue;
+                }
+                basePlanFound = true;
+
+                // The base plan itself has no offer ID
+                boolean isSameOffer = offerId == null ? details.getOfferId() == null : offerId.equals(details.getOfferId());
+                if (isSameOffer) {
+                    offerToken = details.getOfferToken();
+                    break;
+                }
+            }
+        }
+
+        // Base plan is missing: wrong ID or inactive base plan
+        if (!basePlanFound) {
+            Log("Base plan: " + basePlanId + " not found for subscription: " + productId);
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                    "Base plan " + basePlanId + " not found for subscription " + productId, defaultResponseCode)));
+            return;
+        }
+
+        // Offer is missing: wrong ID, inactive offer or the user is not eligible for it
+        if (offerToken == null) {
+            Log("Offer: " + offerId + " is not available for base plan: " + basePlanId + " of subscription: " + productId);
+            postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ITEM_UNAVAILABLE,
+                    "Offer " + offerId + " is not available for base plan " + basePlanId + " (not found or the user is not eligible)", defaultResponseCode)));
+            return;
+        }
+
+        launchBillingFlow(activity, productDetails, offerToken);
     }
 
     /**
