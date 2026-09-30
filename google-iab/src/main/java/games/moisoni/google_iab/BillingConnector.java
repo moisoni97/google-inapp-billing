@@ -239,18 +239,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Returns the state of the billing client
+     * <p>
+     * True when the billing client is connected and product details have been fetched
      */
     public final boolean isReady() {
-        if (!isConnected) {
-            Log("Billing client is not ready because no connection is established yet");
-        }
-
-        if (billingClient == null || !billingClient.isReady()) {
-            Log("Billing client is not ready yet");
-            return false;
-        }
-
-        return isConnected && !fetchedProductInfoList.isEmpty();
+        return isConnected && billingClient != null && billingClient.isReady() && !fetchedProductInfoList.isEmpty();
     }
 
     /**
@@ -260,6 +253,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      */
     private boolean checkProductBeforeInteraction(String productId) {
         if (!isReady()) {
+            Log("Billing client is not ready yet: not connected or product details not fetched");
             postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CLIENT_NOT_READY,
                     "Client is not ready yet", defaultResponseCode)));
             return false;
@@ -1058,6 +1052,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 ImmutableList<BillingFlowParams.ProductDetailsParams> productDetailsParamsList;
 
                 if (productDetails.getProductType().equals(SUBS)) {
+                    if (selectedOfferIndex == notAnOffer) {
+                        Log("Product: " + productId + " is a subscription. Use subscribe() instead of purchase()");
+                        postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.DEVELOPER_ERROR,
+                                "Product " + productId + " is a subscription. Use subscribe() instead of purchase()", defaultResponseCode)));
+                        return;
+                    }
+
                     List<ProductDetails.SubscriptionOfferDetails> offerDetails = productDetails.getSubscriptionOfferDetails();
                     if (offerDetails != null && selectedOfferIndex >= 0 && selectedOfferIndex < offerDetails.size()) {
                         // The offer index represents the different offers in the subscription
@@ -1146,11 +1147,19 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         try {
-            String subscriptionUrl = "https://play.google.com/store/account/subscriptions?package=" + activity.getPackageName() + "&sku=" + productId;
+            Uri.Builder subscriptionUri = Uri.parse("https://play.google.com/store/account/subscriptions").buildUpon();
+
+            // Open the subscription's own page when a product ID is given, otherwise the general subscriptions page
+            if (productId != null && !productId.trim().isEmpty()) {
+                subscriptionUri.appendQueryParameter("sku", productId)
+                        .appendQueryParameter("package", activity.getPackageName());
+            } else {
+                Log("Handling subscription cancellation: no product ID provided, opening the subscriptions page");
+            }
 
             Intent intent = new Intent();
             intent.setAction(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse(subscriptionUrl));
+            intent.setData(subscriptionUri.build());
 
             activity.startActivity(intent);
         } catch (Exception e) {
