@@ -193,6 +193,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 Log("Failure to purchase since item is already owned." + " Response code: " + billingResult.getResponseCode());
                 postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
                         new BillingResponse(ErrorType.ITEM_ALREADY_OWNED, billingResult)));
+
+                // Re-sync owned purchases, e.g. to consume a consumable that is still owned
+                refreshPurchases();
                 break;
             case ITEM_NOT_OWNED:
                 Log("Failure to consume since item is not owned." + " Response code: " + billingResult.getResponseCode());
@@ -403,20 +406,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return this;
         }
 
-        List<String> productInAppList = new ArrayList<>();
-        List<String> productSubsList = new ArrayList<>();
-
-        if (consumableIds != null) {
-            productInAppList.addAll(consumableIds);
-        }
-
-        if (nonConsumableIds != null) {
-            productInAppList.addAll(nonConsumableIds);
-        }
-
-        if (subscriptionIds != null) {
-            productSubsList.addAll(subscriptionIds);
-        }
+        List<String> productInAppList = getInAppProductIds();
+        List<String> productSubsList = getSubsProductIds();
 
         // Clear the list to prevent duplicates during a reconnection attempt
         allProductList.clear();
@@ -514,6 +505,100 @@ public class BillingConnector implements DefaultLifecycleObserver {
         }
 
         return this;
+    }
+
+    /**
+     * Returns the consumable and non-consumable product IDs
+     */
+    @NonNull
+    private List<String> getInAppProductIds() {
+        List<String> productInAppList = new ArrayList<>();
+
+        if (consumableIds != null) {
+            productInAppList.addAll(consumableIds);
+        }
+
+        if (nonConsumableIds != null) {
+            productInAppList.addAll(nonConsumableIds);
+        }
+        return productInAppList;
+    }
+
+    /**
+     * Returns the subscription product IDs
+     */
+    @NonNull
+    private List<String> getSubsProductIds() {
+        List<String> productSubsList = new ArrayList<>();
+
+        if (subscriptionIds != null) {
+            productSubsList.addAll(subscriptionIds);
+        }
+        return productSubsList;
+    }
+
+    /**
+     * Re-syncs product details and owned purchases with Google Play
+     * <p>
+     * Called automatically when the lifecycle owner resumes (if a Lifecycle was provided to the constructor)
+     * <p>
+     * Re-queries product details of a product type that has none fetched (e.g. after a failed query while offline),
+     * which then queries owned purchases. Otherwise, it queries owned purchases directly, so purchases completed
+     * outside the app (e.g. PENDING payments that cleared) are acknowledged/consumed
+     * <p>
+     * Does nothing while the billing client is not connected, purchases are synced once the connection is established
+     */
+    public final void refreshPurchases() {
+        if (isReleased) {
+            return;
+        }
+
+        if (!isConnected || billingClient == null || !billingClient.isReady()) {
+            Log("Refresh purchases: billing client is not connected yet, purchases will sync once connected");
+            return;
+        }
+
+        List<String> productInAppList = getInAppProductIds();
+        List<String> productSubsList = getSubsProductIds();
+
+        boolean hasInAppDetails = false;
+        boolean hasSubsDetails = false;
+        for (ProductInfo productInfo : fetchedProductInfoList) {
+            if (productInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION) {
+                hasSubsDetails = true;
+            } else {
+                hasInAppDetails = true;
+            }
+        }
+
+        boolean shouldQueryInApp = !productInAppList.isEmpty() && !hasInAppDetails;
+        boolean shouldQuerySubs = !productSubsList.isEmpty() && !hasSubsDetails;
+
+        int queryCount = 0;
+        if (shouldQueryInApp) queryCount++;
+        if (shouldQuerySubs) queryCount++;
+
+        // Skip while product details queries are running, they fetch owned purchases when they finish
+        if (!productDetailsQueriesPending.compareAndSet(0, queryCount)) {
+            Log("Refresh purchases: sync already in progress");
+            return;
+        }
+
+        if (queryCount == 0) {
+            Log("Refresh purchases: querying owned purchases...");
+            fetchPurchasedProducts();
+            return;
+        }
+
+        Log("Refresh purchases: re-querying missing product details...");
+
+        if (shouldQueryInApp) {
+            queryProductDetails(INAPP, productInAppList);
+        }
+
+        if (shouldQuerySubs) {
+            queryProductDetails(SUBS, productSubsList);
+        }
     }
 
     /**
@@ -1049,6 +1134,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
                     Log("Launch billing flow failed with response code: " + responseCode + " " + billingResult.getDebugMessage());
                     postBillingEvent(listener -> listener.onBillingError(BillingConnector.this,
                             new BillingResponse(findErrorType(responseCode), billingResult)));
+
+                    // Re-sync owned purchases, e.g. to consume a consumable that is still owned
+                    if (responseCode == ITEM_ALREADY_OWNED) {
+                        refreshPurchases();
+                    }
                 }
             } else {
                 Log("Billing client can not launch billing flow because product details are missing for product: " + productId);
@@ -1352,6 +1442,17 @@ public class BillingConnector implements DefaultLifecycleObserver {
         uiHandler.removeCallbacksAndMessages(null);
 
         billingEventListener = null;
+    }
+
+    /**
+     * Syncs purchases each time the lifecycle owner resumes
+     * <p>
+     * Handles purchases completed while the app was in background (e.g. PENDING payments that cleared)
+     */
+    @Override
+    public void onResume(@NonNull LifecycleOwner owner) {
+        DefaultLifecycleObserver.super.onResume(owner);
+        refreshPurchases();
     }
 
     @Override
