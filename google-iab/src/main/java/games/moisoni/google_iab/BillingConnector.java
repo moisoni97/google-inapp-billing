@@ -971,7 +971,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Consumable products might be bought/consumed by users multiple times (for e.g. diamonds, coins etc.)
      * They have to be consumed within 3 days, otherwise Google will refund the products
      * <p>
-     * A PENDING purchase can't be consumed yet, CONSUME_WARNING is reported instead
+     * Only CONSUMABLE purchases in PURCHASED state are consumed. A PENDING purchase can't be consumed yet,
+     * CONSUME_WARNING is reported instead. Other purchases (non-consumables, subscriptions) are ignored and only logged,
+     * so every owned purchase can safely be passed to this method
      */
     public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
@@ -1016,7 +1018,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                     postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.CONSUME_WARNING,
                             "Warning: purchase can not be consumed because the state is PENDING. Please consume the purchase later", defaultResponseCode)));
+                } else {
+                    Log("Handling consumables: purchase can not be consumed because its state is unspecified: " + purchaseInfo.getProduct());
                 }
+            } else {
+                Log("Handling consumables: ignoring " + purchaseInfo.getProduct() + " because it is not a consumable. " +
+                        "Non-consumables and subscriptions are acknowledged with acknowledgePurchase()");
             }
         }
     }
@@ -1026,7 +1033,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * <p>
      * This will avoid refunding for these products to users by Google
      * <p>
-     * A PENDING purchase can't be acknowledged yet, ACKNOWLEDGE_WARNING is reported instead
+     * Only NON_CONSUMABLE and SUBSCRIPTION purchases in PURCHASED state that are not acknowledged yet are acknowledged.
+     * A PENDING purchase can't be acknowledged yet, ACKNOWLEDGE_WARNING is reported instead. Other purchases
+     * (consumables, already acknowledged purchases) are ignored and only logged, so every owned purchase can safely be passed to this method
      */
     public void acknowledgePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
@@ -1057,6 +1066,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
                                             new BillingResponse(ErrorType.ACKNOWLEDGE_ERROR, billingResult)));
                                 }
                             });
+                        } else {
+                            Log("Handling acknowledges: purchase is already acknowledged: " + purchaseInfo.getProduct());
                         }
                     } else if (purchaseInfo.getPurchase().getPurchaseState() == Purchase.PurchaseState.PENDING) {
                         Log("Handling acknowledges: purchase can not be acknowledged because the state is PENDING. " +
@@ -1064,7 +1075,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                         postBillingEvent(listener -> listener.onBillingError(BillingConnector.this, new BillingResponse(ErrorType.ACKNOWLEDGE_WARNING,
                                 "Warning: purchase can not be acknowledged because the state is PENDING. Please acknowledge the purchase later", defaultResponseCode)));
+                    } else {
+                        Log("Handling acknowledges: purchase can not be acknowledged because its state is unspecified: " + purchaseInfo.getProduct());
                     }
+                    break;
+                case CONSUMABLE:
+                    Log("Handling acknowledges: ignoring " + purchaseInfo.getProduct() + " because it is a consumable. " +
+                            "Consumables are consumed with consumePurchase(), which also acknowledges them");
                     break;
             }
         }
