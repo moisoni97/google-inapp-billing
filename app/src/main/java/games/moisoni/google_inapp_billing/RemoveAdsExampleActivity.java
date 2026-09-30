@@ -49,6 +49,12 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
     }
 
     private void loadUserPreferences() {
+        // Must be initialized once before it's used (usually in your Application class)
+        new SharedPrefsHelper.Builder()
+                .setContext(getApplicationContext())
+                .setUseDefaultSharedPreference(true)
+                .build();
+
         // Here we are loading the data into our variable
         // It's very important to call this before trying to access the variable so you'll have the correct status of the purchase
         // Notice this is the first thing called in the "onCreate" method
@@ -72,27 +78,32 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
             }
 
             // This IS the listener in which we can restore previous purchases
+            // It's triggered after connecting and each time the activity resumes, so it also keeps the status in sync (e.g. after a refund)
             @Override
             public void onPurchasedProductsFetched(@NonNull ProductType productType, @NonNull List<PurchaseInfo> purchases) {
-                String purchasedProduct;
-                boolean isAcknowledged;
+                boolean isOwned = false;
+                boolean isAcknowledged = false;
 
                 for (PurchaseInfo purchaseInfo : purchases) {
-                    purchasedProduct = purchaseInfo.getProduct();
-                    isAcknowledged = purchaseInfo.isAcknowledged();
-
-                    if (!userPrefersAdFree) {
-                        if (purchasedProduct.equalsIgnoreCase(getString(R.string.remove_ads_play_console_id))) {
-                            if (isAcknowledged) {
-
-                                // Here we are saving the purchase status into our "userPrefersAdFree" variable
-                                userPrefersAdFree = true;
-                                SharedPrefsHelper.putBoolean("userPrefersAdFree", true);
-
-                                Toast.makeText(RemoveAdsExampleActivity.this, "The previous purchase was successfully restored.", Toast.LENGTH_SHORT).show();
-                            }
-                        }
+                    // PENDING purchases are listed too, only PURCHASED ones count
+                    if (purchaseInfo.getProduct().equalsIgnoreCase(getString(R.string.remove_ads_play_console_id)) && purchaseInfo.isPurchased()) {
+                        isOwned = true;
+                        isAcknowledged = purchaseInfo.isAcknowledged();
+                        break;
                     }
+                }
+
+                if (isOwned && isAcknowledged && !userPrefersAdFree) {
+                    // Here we are saving the purchase status into our "userPrefersAdFree" variable
+                    // A purchase that is not acknowledged yet is granted in onPurchaseAcknowledged
+                    userPrefersAdFree = true;
+                    SharedPrefsHelper.putBoolean("userPrefersAdFree", true);
+
+                    Toast.makeText(RemoveAdsExampleActivity.this, "The previous purchase was successfully restored.", Toast.LENGTH_SHORT).show();
+                } else if (!isOwned && userPrefersAdFree) {
+                    // The product is no longer owned (e.g. refunded), so ads are shown again
+                    userPrefersAdFree = false;
+                    SharedPrefsHelper.putBoolean("userPrefersAdFree", false);
                 }
             }
 
@@ -140,6 +151,10 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
                         break;
                     case ERROR:
                         Toast.makeText(RemoveAdsExampleActivity.this, "Something happened, the transaction was canceled!", Toast.LENGTH_SHORT).show();
+                        break;
+                    case ITEM_ALREADY_OWNED:
+                        // The library refreshes the purchases after this error, onPurchasedProductsFetched restores the purchase
+                        Toast.makeText(RemoveAdsExampleActivity.this, "You already own this product, restoring the purchase...", Toast.LENGTH_SHORT).show();
                         break;
                 }
             }

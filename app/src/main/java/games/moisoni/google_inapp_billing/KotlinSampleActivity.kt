@@ -87,7 +87,7 @@ class KotlinSampleActivity : AppCompatActivity() {
             BillingEventListener {
             override fun onProductsFetched(productDetails: MutableList<ProductInfo>) {
                 var product: String
-                var price: String
+                var price: String? // null for subscriptions (they have no one-time purchase offer)
 
                 for (productInfo in productDetails) {
                     product = productInfo.product
@@ -123,16 +123,19 @@ class KotlinSampleActivity : AppCompatActivity() {
             ) {
                 /*
                 * This will be called even when no purchased products are returned by the API
+                *
+                * It is triggered after connecting and again every time purchases are refreshed
+                * (each time the activity resumes, or when refreshPurchases() is called)
                 * */
 
                 when (productType) {
                     ProductType.INAPP -> {
-                        // Triggered on startup / reconnect for in-app (one-time) purchases
-                        //TODO - restore in-app purchases
+                        // Triggered for in-app (one-time) purchases
+                        //TODO - restore non-consumable purchases
                     }
 
                     ProductType.SUBS -> {
-                        // Triggered on startup / reconnect for subscription products
+                        // Triggered for subscription products
                         //TODO - restore subscriptions
                     }
 
@@ -140,7 +143,12 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
                 }
 
-                purchases.forEach {
+                /*
+                * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS in PURCHASED state
+                *
+                * PENDING purchases are listed too, and CONSUMABLE products are granted in onPurchaseConsumed
+                * */
+                purchases.filter { it.isPurchased }.forEach {
                     when (it.product) {
                         "non_consumable_id_2" -> {
                             //TODO - do something
@@ -199,7 +207,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                  * Google will refund users purchases that aren't acknowledged in 3 days
                  *
                  * To ensure that all valid purchases are acknowledged the library will automatically
-                 * check and acknowledge all unacknowledged products at the startup
+                 * check and acknowledge all unacknowledged products at startup and each time purchases are refreshed
                  * */
 
                 when (purchase.product) {
@@ -342,15 +350,31 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.ITEM_ALREADY_OWNED -> {
+                        /*
+                        * The library automatically refreshes purchases after this error,
+                        * so a consumable that was not consumed yet gets consumed
+                        * */
                         //TODO - the purchase failed because the item is already owned
                     }
 
                     ErrorType.ITEM_NOT_OWNED -> {
-                        //TODO - the requested product is not available for purchase
+                        //TODO - failure to consume since item is not owned
                     }
 
                     ErrorType.PLAY_STORE_NOT_INSTALLED -> {
                         //TODO - Google Play Store is not installed
+                    }
+
+                    ErrorType.SIGNATURE_VERIFICATION_FAILED -> {
+                        /*
+                        * The purchase signature doesn't match the license key (wrong key or tampered purchase)
+                        * The purchase is ignored (not acknowledged / consumed)
+                        * */
+                        //TODO - purchase signature verification failed
+                    }
+
+                    ErrorType.FEATURE_NOT_SUPPORTED -> {
+                        //TODO - the requested feature is not supported by Google Play on this device
                     }
 
                     else -> {
@@ -409,13 +433,13 @@ class KotlinSampleActivity : AppCompatActivity() {
             billingConnector.subscribe(this, "subscription_id_1")
         }
 
-        // Purchase a subscription with multiple offers
-        // The offer index represents the different offers in the subscription (after Google Billing v5+)
+        // Purchase a subscription with a specific base plan / offer (IDs from Play Console)
+        // Pass null as the offer ID to purchase the base plan without an offer
         purchaseSubscriptionOfferOne.setOnClickListener {
-            billingConnector.subscribe(this, "subscription_id_2", 0)
+            billingConnector.subscribe(this, "subscription_id_2", "base_plan_id", "offer_id_1")
         }
         purchaseSubscriptionOfferTwo.setOnClickListener {
-            billingConnector.subscribe(this, "subscription_id_2", 1)
+            billingConnector.subscribe(this, "subscription_id_2", "base_plan_id", "offer_id_2")
         }
 
         // Cancel a subscription
@@ -529,16 +553,16 @@ class KotlinSampleActivity : AppCompatActivity() {
          *
          * To check if a subscription is currently active (PURCHASED state)
          * */
-        val isSubActive = billingConnector.isSubscriptionActive("subscription_id_1")
-        Log.d("BillingConnector", "Is subscription active: $isSubActive")
+        val isSubsActive = billingConnector.isSubscriptionActive("subscription_id_1")
+        Log.d("BillingConnector", "Is subscription active: $isSubsActive")
 
         /*
          * public boolean isSubscriptionAutoRenewing(String productId)
          *
          * To check if an active subscription is currently auto-renewing
          * */
-        val isSubAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1")
-        Log.d("BillingConnector", "Is subscription auto-renewing: $isSubAutoRenewing")
+        val isSubsAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1")
+        Log.d("BillingConnector", "Is subscription auto-renewing: $isSubsAutoRenewing")
 
         /*
          * public boolean isPurchasePending(String productId)
@@ -559,10 +583,30 @@ class KotlinSampleActivity : AppCompatActivity() {
         /*
          * public List<PurchaseInfo> getPurchasedProductsList()
          *
-         * Returns an immutable list of all currently owned products
+         * Returns a read-only snapshot of all currently owned products
          * */
         val allPurchases = billingConnector.purchasedProductsList
         Log.d("BillingConnector", "Total owned purchases: ${allPurchases.size}")
+
+        /*
+         * public ProductInfo getProductInfo() (PurchaseInfo)
+         *
+         * Returns the product details of a purchase
+         * Can be null when Google Play doesn't return details for an owned product (e.g. deactivated in Play Console)
+         * */
+        for (purchaseInfo in allPurchases) {
+            purchaseInfo.productInfo?.let {
+                Log.d("BillingConnector", "Owned product title: ${it.title}")
+            }
+        }
+
+        /*
+         * public final void refreshPurchases()
+         *
+         * To re-sync owned purchases with Google Play (e.g. from a "Restore purchases" button)
+         * Called automatically each time the activity resumes when a Lifecycle is passed to the constructor
+         * */
+        billingConnector.refreshPurchases()
 
         /*
         * public void consumePurchase(PurchaseInfo purchaseInfo)
@@ -597,17 +641,28 @@ class KotlinSampleActivity : AppCompatActivity() {
         billingConnector.subscribe(this, "product_id")
 
         /*
+         * public final void subscribe(Activity activity, String productId, String basePlanId, String offerId)
+         *
+         * To purchase a subscription with a specific base plan / offer (recommended)
+         * Pass null as the offer ID to purchase the base plan without an offer
+         * */
+        billingConnector.subscribe(this, "product_id", "base_plan_id", null)
+        billingConnector.subscribe(this, "product_id", "base_plan_id", "offer_id")
+
+        /*
          * public final void subscribe(Activity activity, String productId, int selectedOfferIndex)
          *
-         * To purchase a subscription with multiple offers
+         * To purchase a subscription with multiple offers by index
+         * Google Play doesn't guarantee the order of offers, prefer selecting them by ID
          * */
         billingConnector.subscribe(this, "product_id", 1)
 
         /*
-        * public final void unsubscribe(Activity activity, String productId)
-        *
-        * To cancel a subscription
-        * */
+         * public final void unsubscribe(Activity activity, String productId)
+         *
+         * To cancel a subscription (opens the Google Play subscription settings)
+         * Pass null to open the general subscriptions page
+         * */
         billingConnector.unsubscribe(this, "product_id")
     }
 }

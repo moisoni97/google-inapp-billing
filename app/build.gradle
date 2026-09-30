@@ -7,25 +7,23 @@ kotlin {
 }
 
 android {
-    namespace 'games.moisoni.google_inapp_billing'
-    compileSdkVersion 37
+    namespace = 'games.moisoni.google_inapp_billing'
+    compileSdk = 37
 
     defaultConfig {
-        applicationId "games.moisoni.google_inapp_billing"
-        minSdkVersion 23
-        targetSdkVersion 37
+        applicationId = "games.moisoni.google_inapp_billing"
+        minSdk = 23
+        targetSdk = 37
 
-        versionCode 1
-        versionName "1.0.0"
+        versionCode = 1
+        versionName = "1.0.0"
 
-        multiDexEnabled true
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -39,8 +37,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.8.0'
     implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
 
     implementation 'com.intuit.sdp:sdp-android:1.1.1'
     implementation 'com.intuit.ssp:ssp-android:1.1.1'

@@ -113,15 +113,18 @@ public class JavaSampleActivity extends AppCompatActivity {
             public void onPurchasedProductsFetched(@NonNull ProductType productType, @NonNull List<PurchaseInfo> purchases) {
                 /*
                  * This will be called even when no purchased products are returned by the API
+                 *
+                 * It is triggered after connecting and again every time purchases are refreshed
+                 * (each time the activity resumes, or when refreshPurchases() is called)
                  * */
 
                 switch (productType) {
                     case INAPP:
-                        // Triggered on startup / reconnect for in-app (one-time) purchases
-                        //TODO - restore in-app purchases
+                        // Triggered for in-app (one-time) purchases
+                        //TODO - restore non-consumable purchases
                         break;
                     case SUBS:
-                        // Triggered on startup / reconnect for subscription products
+                        // Triggered for subscription products
                         //TODO - restore subscriptions
                         break;
                     case COMBINED:
@@ -132,7 +135,12 @@ public class JavaSampleActivity extends AppCompatActivity {
                 for (PurchaseInfo purchaseInfo : purchases) {
                     product = purchaseInfo.getProduct();
 
-                    if (product.equalsIgnoreCase("consumable_id_1")) {
+                    /*
+                     * Restore entitlements only for NON-CONSUMABLE products and SUBSCRIPTIONS in PURCHASED state
+                     *
+                     * PENDING purchases are listed too, and CONSUMABLE products are granted in onPurchaseConsumed
+                     * */
+                    if (product.equalsIgnoreCase("non_consumable_id_2") && purchaseInfo.isPurchased()) {
                         //TODO - do something
                         Log.d("BillingConnector", "Purchased product fetched: " + product);
                         Toast.makeText(JavaSampleActivity.this, "Purchased product fetched: " + product, Toast.LENGTH_SHORT).show();
@@ -178,12 +186,12 @@ public class JavaSampleActivity extends AppCompatActivity {
                  * Google will refund users purchases that aren't acknowledged in 3 days
                  *
                  * To ensure that all valid purchases are acknowledged the library will automatically
-                 * check and acknowledge all unacknowledged products at the startup
+                 * check and acknowledge all unacknowledged products at startup and each time purchases are refreshed
                  * */
 
                 String acknowledgedProduct = purchase.getProduct();
 
-                if (acknowledgedProduct.equalsIgnoreCase("consumable_id_1")) {
+                if (acknowledgedProduct.equalsIgnoreCase("non_consumable_id_2")) {
                     //TODO - do something
                     Log.d("BillingConnector", "Acknowledged: " + acknowledgedProduct);
                     Toast.makeText(JavaSampleActivity.this, "Acknowledged: " + acknowledgedProduct, Toast.LENGTH_SHORT).show();
@@ -290,13 +298,27 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - fatal error during the API action
                         break;
                     case ITEM_ALREADY_OWNED:
+                        /*
+                         * The library automatically refreshes purchases after this error,
+                         * so a consumable that was not consumed yet gets consumed
+                         * */
                         //TODO - the purchase failed because the item is already owned
                         break;
                     case ITEM_NOT_OWNED:
-                        //TODO - the requested product is not available for purchase
+                        //TODO - failure to consume since item is not owned
                         break;
                     case PLAY_STORE_NOT_INSTALLED:
                         //TODO - Google Play Store is not installed
+                        break;
+                    case SIGNATURE_VERIFICATION_FAILED:
+                        /*
+                         * The purchase signature doesn't match the license key (wrong key or tampered purchase)
+                         * The purchase is ignored (not acknowledged / consumed)
+                         * */
+                        //TODO - purchase signature verification failed
+                        break;
+                    case FEATURE_NOT_SUPPORTED:
+                        //TODO - the requested feature is not supported by Google Play on this device
                         break;
                 }
 
@@ -339,10 +361,10 @@ public class JavaSampleActivity extends AppCompatActivity {
         // Purchase a subscription without an offer (only a base plan)
         purchaseSubscription.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_1"));
 
-        // Purchase a subscription with multiple offers
-        // The offer index represents the different offers in the subscription (after Google Billing v5+)
-        purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 0));
-        purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", 1));
+        // Purchase a subscription with a specific base plan / offer (IDs from Play Console)
+        // Pass null as the offer ID to purchase the base plan without an offer
+        purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", "base_plan_id", "offer_id_1"));
+        purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", "base_plan_id", "offer_id_2"));
 
         // Cancel a subscription
         cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id_1"));
@@ -372,13 +394,14 @@ public class JavaSampleActivity extends AppCompatActivity {
          *
          * To check device-support for subscriptions (not all devices support subscriptions)
          * */
-        if (billingConnector.isSubscriptionSupported() == SupportState.SUPPORTED) {
+        SupportState subscriptionSupport = billingConnector.isSubscriptionSupported();
+        if (subscriptionSupport == SupportState.SUPPORTED) {
             //TODO - do something
             Log.d("BillingConnector", "Device subscription support: SUPPORTED");
-        } else if (billingConnector.isSubscriptionSupported() == SupportState.NOT_SUPPORTED) {
+        } else if (subscriptionSupport == SupportState.NOT_SUPPORTED) {
             //TODO - do something
             Log.d("BillingConnector", "Device subscription support: NOT_SUPPORTED");
-        } else if (billingConnector.isSubscriptionSupported() == SupportState.DISCONNECTED) {
+        } else if (subscriptionSupport == SupportState.DISCONNECTED) {
             //TODO - do something
             Log.d("BillingConnector", "Device subscription support: client DISCONNECTED");
         }
@@ -389,16 +412,17 @@ public class JavaSampleActivity extends AppCompatActivity {
          * To synchronously check a purchase state
          * */
         for (ProductInfo productInfo : fetchedProductInfoList) {
-            if (billingConnector.isPurchased(productInfo) == PurchasedResult.YES) {
+            PurchasedResult purchasedResult = billingConnector.isPurchased(productInfo);
+            if (purchasedResult == PurchasedResult.YES) {
                 //TODO - do something
                 Log.d("BillingConnector", "The product: " + productInfo.getProduct() + " is purchased");
-            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.NO) {
+            } else if (purchasedResult == PurchasedResult.NO) {
                 //TODO - do something
                 Log.d("BillingConnector", "The product: " + productInfo.getProduct() + " is not purchased");
-            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.CLIENT_NOT_READY) {
+            } else if (purchasedResult == PurchasedResult.CLIENT_NOT_READY) {
                 //TODO - do something
                 Log.d("BillingConnector", "Cannot check: " + productInfo.getProduct() + " because client is not ready");
-            } else if (billingConnector.isPurchased(productInfo) == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
+            } else if (purchasedResult == PurchasedResult.PURCHASED_PRODUCTS_NOT_FETCHED_YET) {
                 //TODO - do something
                 Log.d("BillingConnector", "Cannot check: " + productInfo.getProduct() + " because purchased products are not fetched yet");
             }
@@ -420,16 +444,16 @@ public class JavaSampleActivity extends AppCompatActivity {
          *
          * To check if a subscription is currently active (PURCHASED state)
          * */
-        boolean isSubActive = billingConnector.isSubscriptionActive("subscription_id_1");
-        Log.d("BillingConnector", "Is subscription active: " + isSubActive);
+        boolean isSubsActive = billingConnector.isSubscriptionActive("subscription_id_1");
+        Log.d("BillingConnector", "Is subscription active: " + isSubsActive);
 
         /*
          * public boolean isSubscriptionAutoRenewing(String productId)
          *
          * To check if an active subscription is currently auto-renewing
          * */
-        boolean isSubAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1");
-        Log.d("BillingConnector", "Is subscription auto-renewing: " + isSubAutoRenewing);
+        boolean isSubsAutoRenewing = billingConnector.isSubscriptionAutoRenewing("subscription_id_1");
+        Log.d("BillingConnector", "Is subscription auto-renewing: " + isSubsAutoRenewing);
 
         /*
          * public boolean isPurchasePending(String productId)
@@ -450,10 +474,31 @@ public class JavaSampleActivity extends AppCompatActivity {
         /*
          * public List<PurchaseInfo> getPurchasedProductsList()
          *
-         * Returns an immutable list of all currently owned products
+         * Returns a read-only snapshot of all currently owned products
          * */
         List<PurchaseInfo> allPurchases = billingConnector.getPurchasedProductsList();
         Log.d("BillingConnector", "Total owned purchases: " + allPurchases.size());
+
+        /*
+         * public ProductInfo getProductInfo() (PurchaseInfo)
+         *
+         * Returns the product details of a purchase
+         * Can be null when Google Play doesn't return details for an owned product (e.g. deactivated in Play Console)
+         * */
+        for (PurchaseInfo purchaseInfo : allPurchases) {
+            ProductInfo productInfo = purchaseInfo.getProductInfo();
+            if (productInfo != null) {
+                Log.d("BillingConnector", "Owned product title: " + productInfo.getTitle());
+            }
+        }
+
+        /*
+         * public final void refreshPurchases()
+         *
+         * To re-sync owned purchases with Google Play (e.g. from a "Restore purchases" button)
+         * Called automatically each time the activity resumes when a Lifecycle is passed to the constructor
+         * */
+        billingConnector.refreshPurchases();
 
         /*
          * public void consumePurchase(PurchaseInfo purchaseInfo)
@@ -488,16 +533,27 @@ public class JavaSampleActivity extends AppCompatActivity {
         billingConnector.subscribe(JavaSampleActivity.this, "product_id");
 
         /*
+         * public final void subscribe(Activity activity, String productId, String basePlanId, String offerId)
+         *
+         * To purchase a subscription with a specific base plan / offer (recommended)
+         * Pass null as the offer ID to purchase the base plan without an offer
+         * */
+        billingConnector.subscribe(JavaSampleActivity.this, "product_id", "base_plan_id", null);
+        billingConnector.subscribe(JavaSampleActivity.this, "product_id", "base_plan_id", "offer_id");
+
+        /*
          * public final void subscribe(Activity activity, String productId, int selectedOfferIndex)
          *
-         * To purchase a subscription with multiple offers
+         * To purchase a subscription with multiple offers by index
+         * Google Play doesn't guarantee the order of offers, prefer selecting them by ID
          * */
         billingConnector.subscribe(JavaSampleActivity.this, "product_id", 1);
 
         /*
          * public final void unsubscribe(Activity activity, String productId)
          *
-         * To cancel a subscription
+         * To cancel a subscription (opens the Google Play subscription settings)
+         * Pass null to open the general subscriptions page
          * */
         billingConnector.unsubscribe(JavaSampleActivity.this, "product_id");
     }

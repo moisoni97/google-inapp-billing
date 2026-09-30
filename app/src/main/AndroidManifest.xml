@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="games.moisoni.google_inapp_billing">
-
-    <uses-permission android:name="com.android.vending.BILLING" />
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="false"
