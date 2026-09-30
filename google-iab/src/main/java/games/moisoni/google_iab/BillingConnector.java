@@ -104,6 +104,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private final AtomicInteger productDetailsQueriesPending = new AtomicInteger(0);
 
+    private final AtomicInteger connectionGeneration = new AtomicInteger(0);
+
     // Purchase tokens with a consume/acknowledge request in progress or already completed by this instance
     // Prevents duplicate requests and callbacks when purchase flows overlap (e.g. a purchase update during a purchases query)
     private final Set<String> handledPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -372,11 +374,6 @@ public class BillingConnector implements DefaultLifecycleObserver {
         allProductList.addAll(productInAppList);
         allProductList.addAll(productSubsList);
 
-        int queryCount = 0;
-        if (!productInAppList.isEmpty()) queryCount++;
-        if (!productSubsList.isEmpty()) queryCount++;
-        productDetailsQueriesPending.set(queryCount);
-
         // Check if any list is provided
         if (allProductList.isEmpty()) {
             isConnecting.set(false);
@@ -420,23 +417,33 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
                     switch (billingResult.getResponseCode()) {
                         case OK:
+                            // Start a new generation so late responses from a previous connection are ignored
+                            int generation = connectionGeneration.incrementAndGet();
+
+                            // Clear previously fetched products once so new queries accumulate cleanly for this connection
+                            fetchedProductInfoList.clear();
+
+                            int queryCount = 0;
+                            if (!productInAppList.isEmpty()) queryCount++;
+                            if (!productSubsList.isEmpty()) queryCount++;
+
+                            // Set before isConnected, so a concurrent refreshPurchases() sees the sync in progress
+                            productDetailsQueriesPending.set(queryCount);
+
                             isConnected = true;
                             Log("Billing service: connected");
 
                             // Reset the reconnect timer on successful connection
                             reconnectMilliseconds.set(RECONNECT_TIMER_START_MILLISECONDS);
 
-                            // Clear previously fetched products once so new queries accumulate cleanly for this connection
-                            fetchedProductInfoList.clear();
-
                             // Query consumable and non-consumable product details
                             if (!productInAppList.isEmpty()) {
-                                queryProductDetails(INAPP, productInAppList);
+                                queryProductDetails(INAPP, productInAppList, generation);
                             }
 
                             // Query subscription product details
                             if (!productSubsList.isEmpty()) {
-                                queryProductDetails(SUBS, productSubsList);
+                                queryProductDetails(SUBS, productSubsList, generation);
                             }
                             break;
                         case BILLING_UNAVAILABLE:
@@ -549,12 +556,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
         Log("Refresh purchases: re-querying missing product details...");
 
+        int generation = connectionGeneration.get();
+
         if (shouldQueryInApp) {
-            queryProductDetails(INAPP, productInAppList);
+            queryProductDetails(INAPP, productInAppList, generation);
         }
 
         if (shouldQuerySubs) {
-            queryProductDetails(SUBS, productSubsList);
+            queryProductDetails(SUBS, productSubsList, generation);
         }
     }
 
@@ -582,8 +591,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Fires a query in Play Console to show products available to purchase
+     *
+     * @param generation - is the connection generation the query belongs to, responses from an earlier one are ignored
      */
-    private void queryProductDetails(String productType, @NonNull List<String> productList) {
+    private void queryProductDetails(String productType, @NonNull List<String> productList, int generation) {
         List<QueryProductDetailsParams.Product> products = new ArrayList<>();
         for (String productId : productList) {
             products.add(QueryProductDetailsParams.Product.newBuilder()
@@ -597,6 +608,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
                 .build();
 
         billingClient.queryProductDetailsAsync(productDetailsParams, (billingResult, productDetailsResult) -> {
+            // A reconnection happened since this query was sent, the new connection runs its own queries
+            if (generation != connectionGeneration.get()) {
+                Log("Query Product Details: ignoring a response from a previous connection");
+                return;
+            }
+
             if (billingResult.getResponseCode() == OK) {
                 List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
 
