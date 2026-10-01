@@ -88,6 +88,8 @@ public interface BillingEventListener {
      * Callback will be triggered when the details of a specific product ID are not returned by a query
      * This is useful for identifying configuration errors in the Play Console
      * <p>
+     * Reported once per connection (and again after the connection is re-established), not on every purchase refresh
+     * <p>
      * The response message contains the reason reported by Google Play: the product was not found (not created or not active),
      * its ID has an invalid format, or the user is not eligible for any of its offers
      *

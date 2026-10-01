@@ -113,6 +113,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     private final AtomicInteger connectionGeneration = new AtomicInteger(0);
 
+    // Set when the product details query of that type succeeds (even if some products were not returned), reset on every new connection
+    // The refreshPurchases() method re-runs only the queries that failed, so missing products are not reported again on every resume
+    private volatile boolean queriedInAppDetails = false;
+    private volatile boolean queriedSubsDetails = false;
+
     // Purchase tokens with a consume/acknowledge request in progress or already completed by this instance
     // Prevents duplicate requests and callbacks when purchase flows overlap (e.g. a purchase update during a purchases query)
     private final Set<String> handledPurchaseTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -476,8 +481,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
                             // Start a new generation so late responses from a previous connection are ignored
                             int generation = connectionGeneration.incrementAndGet();
 
-                            // Clear previously fetched products once so new queries accumulate cleanly for this connection
+                            // Clear previously fetched products and query states once so new queries accumulate cleanly for this connection
                             fetchedProductInfoList.clear();
+                            queriedInAppDetails = false;
+                            queriedSubsDetails = false;
 
                             int queryCount = 0;
                             if (!productInAppList.isEmpty()) queryCount++;
@@ -562,9 +569,12 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * <p>
      * Called automatically when the lifecycle owner resumes (if a Lifecycle was provided to the constructor)
      * <p>
-     * Re-queries product details of a product type that has none fetched (e.g. after a failed query while offline),
+     * Re-runs the product details query of a product type whose last query failed (e.g. while offline),
      * which then queries owned purchases. Otherwise, it queries owned purchases directly, so purchases completed
      * outside the app (e.g. PENDING payments that cleared) are acknowledged/consumed
+     * <p>
+     * Products that Google Play did not return in a successful query are not queried again until the next connection,
+     * so onProductQueryError() is reported once per connection, not on every refresh
      * <p>
      * Does nothing while the billing client is not connected, purchases are synced once the connection is established
      */
@@ -581,18 +591,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
         List<String> productInAppList = getInAppProductIds();
         List<String> productSubsList = getSubsProductIds();
 
-        boolean hasInAppDetails = false;
-        boolean hasSubsDetails = false;
-        for (ProductInfo productInfo : fetchedProductInfoList) {
-            if (productInfo.getSkuProductType() == SkuProductType.SUBSCRIPTION) {
-                hasSubsDetails = true;
-            } else {
-                hasInAppDetails = true;
-            }
-        }
-
-        boolean shouldQueryInApp = !productInAppList.isEmpty() && !hasInAppDetails;
-        boolean shouldQuerySubs = !productSubsList.isEmpty() && !hasSubsDetails;
+        // Re-run only the product details queries that failed, a successful one is not repeated even if some products were missing
+        boolean shouldQueryInApp = !productInAppList.isEmpty() && !queriedInAppDetails;
+        boolean shouldQuerySubs = !productSubsList.isEmpty() && !queriedSubsDetails;
 
         int queryCount = 0;
         if (shouldQueryInApp) queryCount++;
@@ -610,7 +611,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
             return;
         }
 
-        Log("Refresh purchases: re-querying missing product details...");
+        Log("Refresh purchases: re-running failed product details queries...");
 
         int generation = connectionGeneration.get();
 
@@ -671,6 +672,13 @@ public class BillingConnector implements DefaultLifecycleObserver {
             }
 
             if (billingResult.getResponseCode() == OK) {
+                // Products missing from a successful query are reported below, refreshPurchases() doesn't run it again
+                if (productType.equals(SUBS)) {
+                    queriedSubsDetails = true;
+                } else {
+                    queriedInAppDetails = true;
+                }
+
                 List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
 
                 HashSet<String> foundProductIds = new HashSet<>();
