@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * A base plan or an offer of a subscription, from ProductInfo.getSubscriptionOfferDetails()
+ * <p>
+ * Purchase it with BillingConnector.subscribe(activity, productId, basePlanId, offerId)
+ */
 public class SubscriptionOfferDetails {
 
     private final String offerId;
@@ -17,6 +22,9 @@ public class SubscriptionOfferDetails {
     private final String basePlanId;
     private final List<PricingPhases> pricingPhases;
 
+    /**
+     * Creates the details of a base plan or offer from the values returned by Play Billing
+     */
     public SubscriptionOfferDetails(@Nullable String offerId, List<ProductDetails.PricingPhase> pricingPhases, List<String> offerTags, String offerToken, String basePlanId) {
         this.offerId = offerId;
         this.offerTags = offerTags;
@@ -41,18 +49,32 @@ public class SubscriptionOfferDetails {
         return offerId;
     }
 
+    /**
+     * Returns the tags set in Play Console for the base plan and the offer
+     */
     public List<String> getOfferTags() {
         return offerTags;
     }
 
+    /**
+     * Returns the token that selects this base plan or offer in the purchase flow (used by subscribe())
+     */
     public String getOfferToken() {
         return offerToken;
     }
 
+    /**
+     * Returns the base plan ID from Play Console
+     */
     public String getBasePlanId() {
         return basePlanId;
     }
 
+    /**
+     * Returns the pricing phases in the order they are charged (e.g. a free trial, then the regular price)
+     * <p>
+     * The last phase is the regular price
+     */
     public List<PricingPhases> getPricingPhases() {
         return pricingPhases;
     }
@@ -63,6 +85,9 @@ public class SubscriptionOfferDetails {
                 pricingPhase.getBillingPeriod(), pricingPhase.getBillingCycleCount(), pricingPhase.getRecurrenceMode());
     }
 
+    /**
+     * A pricing phase of a base plan or offer: a price charged every billing period, for a number of periods
+     */
     public static final class PricingPhases {
 
         private final String formattedPrice;
@@ -72,6 +97,9 @@ public class SubscriptionOfferDetails {
         private final int billingCycleCount;
         private final int recurrenceMode;
 
+        /**
+         * Creates a pricing phase from the values returned by Play Billing
+         */
         public PricingPhases(String formattedPrice, long priceAmountMicros, String priceCurrencyCode, String billingPeriod, int billingCycleCount, int recurrenceMode) {
             this.formattedPrice = formattedPrice;
             this.priceAmountMicros = priceAmountMicros;
@@ -81,26 +109,45 @@ public class SubscriptionOfferDetails {
             this.recurrenceMode = recurrenceMode;
         }
 
+        /**
+         * Returns the formatted price, including the currency symbol (e.g. "$4.99")
+         */
         public String getFormattedPrice() {
             return formattedPrice;
         }
 
+        /**
+         * Returns the price in micro-units (1,000,000 micro-units = 1 unit of the currency), 0 for a free trial
+         */
         public long getPriceAmountMicros() {
             return priceAmountMicros;
         }
 
+        /**
+         * Returns the ISO 4217 currency code (e.g. "USD")
+         */
         public String getPriceCurrencyCode() {
             return priceCurrencyCode;
         }
 
+        /**
+         * Returns the billing period in ISO 8601 format (e.g. "P1W" for one week, "P1M" for one month, "P1Y" for one year)
+         */
         public String getBillingPeriod() {
             return billingPeriod;
         }
 
+        /**
+         * Returns the number of billing periods the phase lasts, 0 when it recurs until the subscription is canceled
+         */
         public int getBillingCycleCount() {
             return billingCycleCount;
         }
 
+        /**
+         * Returns how the phase recurs (ProductDetails.RecurrenceMode): INFINITE_RECURRING (1) until the subscription
+         * is canceled, FINITE_RECURRING (2) for getBillingCycleCount() periods, or NON_RECURRING (3) charged once
+         */
         public int getRecurrenceMode() {
             return recurrenceMode;
         }

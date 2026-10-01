@@ -11,6 +11,11 @@ import java.util.List;
 
 import games.moisoni.google_iab.type.SkuProductType;
 
+/**
+ * Details of a product fetched from Google Play, passed to BillingEventListener.onProductsFetched()
+ * <p>
+ * Also available from PurchaseInfo.getProductInfo() when the details of the purchased product were fetched
+ */
 public class ProductInfo {
 
     private final SkuProductType skuProductType;
@@ -25,6 +30,9 @@ public class ProductInfo {
     private final String oneTimePurchaseOfferPriceCurrencyCode;
     private final List<SubscriptionOfferDetails> subscriptionOfferDetails;
 
+    /**
+     * Creates a ProductInfo from the product details returned by Play Billing
+     */
     public ProductInfo(SkuProductType skuProductType, @NonNull ProductDetails productDetails) {
         this.skuProductType = skuProductType;
         this.productDetails = productDetails;
@@ -56,30 +64,53 @@ public class ProductInfo {
         }
     }
 
+    /**
+     * Returns CONSUMABLE, NON_CONSUMABLE or SUBSCRIPTION, based on the product ID list the product was added to
+     */
     public SkuProductType getSkuProductType() {
         return skuProductType;
     }
 
+    /**
+     * Returns the original Play Billing ProductDetails
+     */
     public ProductDetails getProductDetails() {
         return productDetails;
     }
 
+    /**
+     * Returns the product ID
+     */
     public String getProduct() {
         return product;
     }
 
+    /**
+     * Returns the description set in Play Console
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * Returns the product name followed by the app name in parentheses (e.g. "100 Coins (My App)")
+     * <p>
+     * Use getName() for the product name only
+     */
     public String getTitle() {
         return title;
     }
 
+    /**
+     * Returns the Play Billing product type: "inapp" (BillingClient.ProductType.INAPP) or "subs" (BillingClient.ProductType.SUBS)
+     */
     public String getType() {
         return type;
     }
 
+    /**
+     * Returns the product name set in Play Console, without the app name (e.g. "100 Coins")
+     */
     public String getName() {
         return name;
     }
@@ -111,6 +142,11 @@ public class ProductInfo {
         return oneTimePurchaseOfferPriceCurrencyCode;
     }
 
+    /**
+     * Returns the base plans and offers of a subscription that the user is eligible for (read-only), empty for in-app products
+     * <p>
+     * Google Play does not guarantee their order, use getBasePlanId() / getOfferId() to find a specific one
+     */
     public List<SubscriptionOfferDetails> getSubscriptionOfferDetails() {
         return Collections.unmodifiableList(subscriptionOfferDetails);
     }

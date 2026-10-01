@@ -155,7 +155,7 @@ public class BillingConnector implements DefaultLifecycleObserver {
      *                  and release() is called when it is destroyed. Can be null if manual lifecycle
      *                  management is preferred
      */
-    public BillingConnector(@NonNull Context context, String base64Key, @Nullable Lifecycle lifecycle) {
+    public BillingConnector(@NonNull Context context, @Nullable String base64Key, @Nullable Lifecycle lifecycle) {
         this.context = context.getApplicationContext();
         this.base64Key = base64Key;
         this.uiHandler = new Handler(Looper.getMainLooper());
@@ -1179,7 +1179,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Called to purchase a non-consumable/consumable product
      * <p>
-     * Requires isReady(). The result is reported through onProductsPurchased() or onBillingError() (e.g. USER_CANCELED)
+     * Requires isReady() and must be called on the main thread. The result is reported through onProductsPurchased()
+     * or onBillingError() (e.g. USER_CANCELED)
      * <p>
      * For subscriptions, use subscribe()
      */
@@ -1292,6 +1293,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * so subscribe(activity, productId, basePlanId, offerId) is safer
      * <p>
      * For a subscription with only one base plan and no offers, use subscribe(activity, productId) method or selectedOfferIndex = 0
+     * <p>
+     * Requires isReady() and must be called on the main thread. The result is reported through onProductsPurchased()
+     * or onBillingError() (e.g. USER_CANCELED)
      */
     public final void subscribe(Activity activity, String productId, int selectedOfferIndex) {
         purchase(activity, productId, selectedOfferIndex);
@@ -1303,7 +1307,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * This method assumes the desired offer is the first one available (index 0)
      * For subscriptions with multiple base plans or offers, use subscribe(activity, productId, basePlanId, offerId)
      * <p>
-     * Requires isReady(). The result is reported through onProductsPurchased() or onBillingError() (e.g. USER_CANCELED)
+     * Requires isReady() and must be called on the main thread. The result is reported through onProductsPurchased()
+     * or onBillingError() (e.g. USER_CANCELED)
      */
     public final void subscribe(Activity activity, String productId) {
         purchase(activity, productId, 0);
@@ -1316,6 +1321,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * The available IDs can be read from ProductInfo.getSubscriptionOfferDetails() (getBasePlanId() / getOfferId())
      * <p>
      * Google Play only returns offers the user is eligible for (e.g. a free trial that was already used is not returned)
+     * <p>
+     * Requires isReady() and must be called on the main thread. The result is reported through onProductsPurchased()
+     * or onBillingError() (e.g. USER_CANCELED)
      *
      * @param basePlanId - is the base plan ID from Play Console
      * @param offerId    - is the offer ID from Play Console, or null to purchase the base plan without an offer
@@ -1666,6 +1674,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * (called automatically when a lifecycle was provided to the constructor, and it is destroyed)
      * <p>
      * Ends the connection and stops all callbacks. The instance can't be connected again, create a new one instead
+     * <p>
+     * When a lifecycle was provided, call it on the main thread (the lifecycle only allows removing its observers there)
      */
     public void release() {
         // Mark as released first so concurrent BillingClient callbacks cannot enqueue listener work
@@ -1703,6 +1713,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
         refreshPurchases();
     }
 
+    /**
+     * Releases the BillingConnector when the lifecycle owner is destroyed
+     */
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
         DefaultLifecycleObserver.super.onDestroy(owner);
