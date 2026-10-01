@@ -241,9 +241,16 @@ public class JavaSampleActivity extends AppCompatActivity {
 
             @Override
             public void onProductQueryError(@NonNull String productId, @NonNull BillingResponse response) {
+                /*
+                 * Triggered when Google Play doesn't return the details of a product ID
+                 *
+                 * The message contains the reason: not found (not created or not active in Play Console),
+                 * invalid product ID format, or no offer the user is eligible for
+                 * */
+
                 //TODO - do something
-                Log.d("BillingConnector", "Product ID not found: " + productId);
-                Toast.makeText(JavaSampleActivity.this, "Product ID not found: " + productId, Toast.LENGTH_SHORT).show();
+                Log.d("BillingConnector", "Product query error: " + response.getDebugMessage());
+                Toast.makeText(JavaSampleActivity.this, "Product query error: " + response.getDebugMessage(), Toast.LENGTH_SHORT).show();
             }
 
             @Override

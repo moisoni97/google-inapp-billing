@@ -272,11 +272,18 @@ class KotlinSampleActivity : AppCompatActivity() {
                 productId: String,
                 response: BillingResponse
             ) {
+                /*
+                 * Triggered when Google Play doesn't return the details of a product ID
+                 *
+                 * The message contains the reason: not found (not created or not active in Play Console),
+                 * invalid product ID format, or no offer the user is eligible for
+                 * */
+
                 //TODO - do something
-                Log.d("BillingConnector", "Product ID not found: $productId")
+                Log.d("BillingConnector", "Product query error: ${response.debugMessage}")
                 Toast.makeText(
                     this@KotlinSampleActivity,
-                    "Product ID not found: $productId",
+                    "Product query error: ${response.debugMessage}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
