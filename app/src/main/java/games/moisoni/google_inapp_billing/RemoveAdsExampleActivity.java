@@ -144,17 +144,23 @@ public class RemoveAdsExampleActivity extends AppCompatActivity {
 
             @Override
             public void onBillingError(@NonNull BillingConnector billingConnector, @NonNull BillingResponse response) {
+                // Errors are reported for the connection too, not only for the purchase flow
+                // A failed connection is retried automatically, so its error can be reported again (e.g. while the device is offline)
                 switch (response.getErrorType()) {
                     case ACKNOWLEDGE_WARNING:
                         // This response will be triggered when the purchase is still PENDING (reported once per purchase)
                         Toast.makeText(RemoveAdsExampleActivity.this, "The transaction is still pending. Please come back later to receive the purchase!", Toast.LENGTH_SHORT).show();
                         break;
-                    case BILLING_UNAVAILABLE:
+                    case NETWORK_ERROR:
                     case SERVICE_UNAVAILABLE:
-                        Toast.makeText(RemoveAdsExampleActivity.this, "Billing is unavailable at the moment. Check your internet connection!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RemoveAdsExampleActivity.this, "Google Play can't be reached at the moment. Check your internet connection!", Toast.LENGTH_SHORT).show();
+                        break;
+                    case BILLING_UNAVAILABLE:
+                        // For example, the Play Store is outdated, no Google account is signed in, or billing is not available in the user's country
+                        Toast.makeText(RemoveAdsExampleActivity.this, "Purchases are not available on this device or Google account.", Toast.LENGTH_SHORT).show();
                         break;
                     case ERROR:
-                        Toast.makeText(RemoveAdsExampleActivity.this, "Something happened, the transaction was canceled!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RemoveAdsExampleActivity.this, "Something went wrong. Please try again later!", Toast.LENGTH_SHORT).show();
                         break;
                     case ITEM_ALREADY_OWNED:
                         // The library refreshes the purchases after this error, onPurchasedProductsFetched restores the purchase
