@@ -74,7 +74,7 @@ public class JavaSampleActivity extends AppCompatActivity {
         subscriptionIds.add("subscription_id_2");
         subscriptionIds.add("subscription_id_3");
 
-        billingConnector = new BillingConnector(this, "license_key", getLifecycle()) // "license_key" - public developer key from Play Console
+        billingConnector = new BillingConnector(this, "license_key", getLifecycle()) // "license_key" - the license key (public key) from Play Console, used to verify purchase signatures
                 .setConsumableIds(consumableIds) // To set consumable IDs - call only for consumable products
                 .setNonConsumableIds(nonConsumableIds) // To set non-consumable IDs - call only for non-consumable products
                 .setSubscriptionIds(subscriptionIds) // To set subscription IDs - call only for subscription products
@@ -275,7 +275,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase complete
+                         * Here users can be informed that it may take a while until the purchase completes
                          * and to come back later to receive their purchase
                          * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
                          * */
@@ -291,7 +291,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase complete
+                         * Here users can be informed that it may take a while until the purchase completes
                          * and to come back later to receive their purchase
                          * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
                          * */
@@ -394,7 +394,7 @@ public class JavaSampleActivity extends AppCompatActivity {
         purchaseSubscriptionOfferOne.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", "base_plan_id", "offer_id_1"));
         purchaseSubscriptionOfferTwo.setOnClickListener(v -> billingConnector.subscribe(JavaSampleActivity.this, "subscription_id_2", "base_plan_id", "offer_id_2"));
 
-        // Cancel a subscription
+        // Open the Google Play page where the user can cancel the subscription
         cancelSubscription.setOnClickListener(v -> billingConnector.unsubscribe(JavaSampleActivity.this, "subscription_id_1"));
 
         // Exit app on button click

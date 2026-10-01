@@ -73,7 +73,7 @@ class KotlinSampleActivity : AppCompatActivity() {
 
         billingConnector = BillingConnector(
             this,
-            "license_key", // "license_key" - public developer key from Play Console
+            "license_key", // "license_key" - the license key (public key) from Play Console, used to verify purchase signatures
             lifecycle
         )
             .setConsumableIds(consumableIds) // To set consumable IDs - call only for consumable products
@@ -316,7 +316,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase complete
+                         * Here users can be informed that it may take a while until the purchase completes
                          * and to come back later to receive their purchase
                          * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
                          * */
@@ -334,7 +334,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                          *
                          * PENDING transactions usually occur when users choose cash as their form of payment
                          *
-                         * Here users can be informed that it may take a while until the purchase complete
+                         * Here users can be informed that it may take a while until the purchase completes
                          * and to come back later to receive their purchase
                          * isPurchasePending() / purchase.isPending() can be used to show the pending state later on
                          * */
@@ -471,7 +471,7 @@ class KotlinSampleActivity : AppCompatActivity() {
             billingConnector.subscribe(this, "subscription_id_2", "base_plan_id", "offer_id_2")
         }
 
-        // Cancel a subscription
+        // Open the Google Play page where the user can cancel the subscription
         cancelSubscription.setOnClickListener {
             billingConnector.unsubscribe(this, "subscription_id_3")
         }
