@@ -210,7 +210,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * To attach an event listener to establish a bridge with the caller
      * <p>
-     * Set it before connect(), so no event is missed
+     * Events are posted to the main thread and the listener is read when each event is delivered,
+     * so setting it before or right after connect() (on the main thread) misses no event
+     * Events delivered while no listener is set are dropped
      */
     public final void setBillingEventListener(BillingEventListener billingEventListener) {
         this.billingEventListener = billingEventListener;
