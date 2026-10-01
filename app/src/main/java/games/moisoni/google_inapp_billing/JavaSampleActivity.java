@@ -260,7 +260,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - client is not ready yet
                         break;
                     case CLIENT_DISCONNECTED:
-                        //TODO - client has disconnected
+                        //TODO - client has disconnected (the library reconnects automatically)
                         break;
                     case PRODUCT_NOT_EXIST:
                         //TODO - product does not exist
@@ -313,7 +313,7 @@ public class JavaSampleActivity extends AppCompatActivity {
                         //TODO - a network error occurred during the operation
                         break;
                     case BILLING_UNAVAILABLE:
-                        //TODO - a user billing error occurred during processing
+                        //TODO - billing is not available on this device or account (e.g. outdated Play Store, no Google account, unsupported country)
                         break;
                     case ITEM_UNAVAILABLE:
                         //TODO - requested product is not available for purchase

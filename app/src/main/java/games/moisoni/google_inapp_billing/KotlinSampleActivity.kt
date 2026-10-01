@@ -298,7 +298,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.CLIENT_DISCONNECTED -> {
-                        //TODO - client has disconnected
+                        //TODO - client has disconnected (the library reconnects automatically)
                     }
 
                     ErrorType.PRODUCT_NOT_EXIST -> {
@@ -362,7 +362,7 @@ class KotlinSampleActivity : AppCompatActivity() {
                     }
 
                     ErrorType.BILLING_UNAVAILABLE -> {
-                        //TODO - a user billing error occurred during processing
+                        //TODO - billing is not available on this device or account (e.g. outdated Play Store, no Google account, unsupported country)
                     }
 
                     ErrorType.ITEM_UNAVAILABLE -> {
