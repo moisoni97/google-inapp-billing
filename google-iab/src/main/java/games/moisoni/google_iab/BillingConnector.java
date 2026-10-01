@@ -70,6 +70,12 @@ import games.moisoni.google_iab.model.BillingResponse;
 import games.moisoni.google_iab.model.ProductInfo;
 import games.moisoni.google_iab.model.PurchaseInfo;
 
+/**
+ * Connects to Google Play Billing, fetches product details and owned purchases, launches purchase flows
+ * and consumes / acknowledges purchases
+ * <p>
+ * Set the product IDs and options, then call connect(). Events are delivered to the BillingEventListener on the main thread
+ */
 public class BillingConnector implements DefaultLifecycleObserver {
 
     private final Handler uiHandler;
@@ -133,13 +139,16 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * BillingConnector public constructor
+     * <p>
+     * Must be called on the main thread when a lifecycle is provided
      *
-     * @param context   - is the application context
-     * @param base64Key - is the public developer key from Play Console
+     * @param context   - is any context, only its application context is kept
+     * @param base64Key - is the license key (public key) from Play Console, used to verify the signature of purchases
+     *                  Null or empty disables the verification
      * @param lifecycle - (optional) the lifecycle object to automatically manage the BillingConnector's
-     *                  lifecycle. If provided, the connector will automatically handle connection
-     *                  cleanup when the lifecycle owner is destroyed. Can be null if manual lifecycle
-     *                  management is preferred.
+     *                  lifecycle. If provided, purchases are refreshed each time the lifecycle owner resumes
+     *                  and release() is called when it is destroyed. Can be null if manual lifecycle
+     *                  management is preferred
      */
     public BillingConnector(@NonNull Context context, String base64Key, @Nullable Lifecycle lifecycle) {
         this.context = context.getApplicationContext();
@@ -200,6 +209,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To attach an event listener to establish a bridge with the caller
+     * <p>
+     * Set it before connect(), so no event is missed
      */
     public final void setBillingEventListener(BillingEventListener billingEventListener) {
         this.billingEventListener = billingEventListener;
@@ -207,6 +218,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To set consumable products IDs
+     * <p>
+     * Consumables can be purchased again once consumed. Must be called before connect()
      */
     public final BillingConnector setConsumableIds(List<String> consumableIds) {
         this.consumableIds = consumableIds != null ? new ArrayList<>(consumableIds) : null;
@@ -215,6 +228,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To set non-consumable products IDs
+     * <p>
+     * Non-consumables are purchased once and acknowledged. Must be called before connect()
      */
     public final BillingConnector setNonConsumableIds(List<String> nonConsumableIds) {
         this.nonConsumableIds = nonConsumableIds != null ? new ArrayList<>(nonConsumableIds) : null;
@@ -223,6 +238,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To set subscription products IDs
+     * <p>
+     * Subscriptions are acknowledged. Must be called before connect()
      */
     public final BillingConnector setSubscriptionIds(List<String> subscriptionIds) {
         this.subscriptionIds = subscriptionIds != null ? new ArrayList<>(subscriptionIds) : null;
@@ -231,6 +248,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To auto acknowledge the purchase
+     * <p>
+     * Non-consumable and subscription purchases are acknowledged as soon as they are PURCHASED
+     * Without it, call acknowledgePurchase() within 3 days, otherwise Google refunds the purchase
      */
     public final BillingConnector autoAcknowledge() {
         shouldAutoAcknowledge = true;
@@ -239,6 +259,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To auto consume the purchase
+     * <p>
+     * Consumable purchases are consumed as soon as they are PURCHASED
+     * Without it, call consumePurchase() within 3 days, otherwise Google refunds the purchase
      */
     public final BillingConnector autoConsume() {
         shouldAutoConsume = true;
@@ -247,6 +270,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * To enable logging for debugging
+     * <p>
+     * Logs to Logcat with the tag "BillingConnector". Don't enable it in release builds
      */
     public final BillingConnector enableLogging() {
         shouldEnableLogging = true;
@@ -256,7 +281,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Returns the state of the billing client
      * <p>
-     * True when the billing client is connected and product details have been fetched
+     * True when the billing client is connected and product details have been fetched,
+     * purchase() and subscribe() require it
      */
     public final boolean isReady() {
         return isConnected && billingClient != null && billingClient.isReady() && !fetchedProductInfoList.isEmpty();
@@ -354,7 +380,14 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * To connect the billing client with Play Console
+     * To connect the billing client with Google Play
+     * <p>
+     * Once connected, product details are fetched, then owned purchases. A lost connection is re-established automatically
+     * <p>
+     * Does nothing if the billing client is already connected or connecting, or after release()
+     *
+     * @throws IllegalArgumentException if no product IDs were set, a product ID is null,
+     *                                  or a product ID appears more than once across the lists
      */
     public final BillingConnector connect() {
         if (isReleased) {
@@ -842,6 +875,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Before using subscriptions, device-support must be checked
      * Not all devices support subscriptions
+     * <p>
+     * Returns DISCONNECTED while the billing client is not connected
      */
     public SupportState isSubscriptionSupported() {
         if (billingClient == null || !billingClient.isReady()) {
@@ -1014,6 +1049,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Only CONSUMABLE purchases in PURCHASED state are consumed. A PENDING purchase can't be consumed yet,
      * CONSUME_WARNING is reported instead. Other purchases (non-consumables, subscriptions) are ignored and only logged,
      * so every owned purchase can safely be passed to this method
+     * <p>
+     * The result is reported through onPurchaseConsumed() or CONSUME_ERROR
      */
     public void consumePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
@@ -1069,13 +1106,15 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Acknowledge non-consumable products & subscriptions
+     * Acknowledge non-consumable products and subscriptions
      * <p>
      * This will avoid refunding for these products to users by Google
      * <p>
      * Only NON_CONSUMABLE and SUBSCRIPTION purchases in PURCHASED state that are not acknowledged yet are acknowledged.
      * A PENDING purchase can't be acknowledged yet, ACKNOWLEDGE_WARNING is reported instead. Other purchases
      * (consumables, already acknowledged purchases) are ignored and only logged, so every owned purchase can safely be passed to this method
+     * <p>
+     * The result is reported through onPurchaseAcknowledged() or ACKNOWLEDGE_ERROR
      */
     public void acknowledgePurchase(@NonNull PurchaseInfo purchaseInfo) {
         if (checkPurchaseBeforeInteraction(purchaseInfo)) {
@@ -1129,6 +1168,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Called to purchase a non-consumable/consumable product
+     * <p>
+     * Requires isReady(). The result is reported through onProductsPurchased() or onBillingError() (e.g. USER_CANCELED)
+     * <p>
+     * For subscriptions, use subscribe()
      */
     public final void purchase(Activity activity, String productId) {
         purchase(activity, productId, notAnOffer);
@@ -1234,10 +1277,11 @@ public class BillingConnector implements DefaultLifecycleObserver {
     /**
      * Called to purchase a subscription with offers
      * <p>
-     * To avoid confusion while trying to purchase a subscription
-     * Does the same thing as purchase() method
+     * Selects the base plan or offer by its index in ProductInfo.getSubscriptionOfferDetails()
+     * Google Play does not guarantee the order of offers and only returns the offers the user is eligible for,
+     * so subscribe(activity, productId, basePlanId, offerId) is safer
      * <p>
-     * For subscription with only one base package, use subscribe(activity, productId) method or selectedOfferIndex = 0
+     * For a subscription with only one base plan and no offers, use subscribe(activity, productId) method or selectedOfferIndex = 0
      */
     public final void subscribe(Activity activity, String productId, int selectedOfferIndex) {
         purchase(activity, productId, selectedOfferIndex);
@@ -1247,7 +1291,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Called to purchase a simple subscription
      * <p>
      * This method assumes the desired offer is the first one available (index 0)
-     * For subscriptions with multiple offers, use subscribe(activity, productId, selectedOfferIndex)
+     * For subscriptions with multiple base plans or offers, use subscribe(activity, productId, basePlanId, offerId)
+     * <p>
+     * Requires isReady(). The result is reported through onProductsPurchased() or onBillingError() (e.g. USER_CANCELED)
      */
     public final void subscribe(Activity activity, String productId) {
         purchase(activity, productId, 0);
@@ -1323,7 +1369,10 @@ public class BillingConnector implements DefaultLifecycleObserver {
     }
 
     /**
-     * Called to cancel a subscription
+     * Called to let the user cancel a subscription
+     * <p>
+     * Opens the Google Play subscriptions page, where the user can cancel it (a subscription can't be canceled from the app)
+     * Opens the page of the given subscription, or the general subscriptions page when productId is null or empty
      */
     public final void unsubscribe(Activity activity, String productId) {
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
@@ -1359,6 +1408,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Checks if a subscription is currently active
+     * <p>
+     * Based on the purchases fetched so far, so it returns false until purchases are fetched
+     * Use isPurchased() to tell "not owned" apart from "not fetched yet"
      *
      * @param productId - is the subscription product ID to check
      */
@@ -1375,6 +1427,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Checks if a subscription is currently active and auto-renewing
+     * <p>
+     * False once the user canceled it (the subscription stays active until the end of the paid period)
+     * Based on the purchases fetched so far, so it returns false until purchases are fetched
      *
      * @param productId - is the subscription product ID to check
      */
@@ -1394,6 +1449,8 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * <p>
      * Pending purchases require completion through the Google Play Store
      * and will eventually transition to PURCHASED or canceled state
+     * <p>
+     * Based on the purchases fetched so far, so it returns false until purchases are fetched
      *
      * @param productId - is the product ID to check
      */
@@ -1484,6 +1541,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
 
     /**
      * Returns a list of all purchased products
+     * <p>
+     * A read-only snapshot of the purchases fetched so far (all product types), empty until purchases are fetched
+     * Also contains PENDING purchases, check PurchaseInfo.isPurchased()
      */
     public List<PurchaseInfo> getPurchasedProductsList() {
         synchronized (purchasedProductsSync) {
@@ -1593,6 +1653,9 @@ public class BillingConnector implements DefaultLifecycleObserver {
      * Called to release the BillingClient instance
      * <p>
      * To avoid leaks this method should be called when BillingConnector is no longer needed
+     * (called automatically when a lifecycle was provided to the constructor, and it is destroyed)
+     * <p>
+     * Ends the connection and stops all callbacks. The instance can't be connected again, create a new one instead
      */
     public void release() {
         // Mark as released first so concurrent BillingClient callbacks cannot enqueue listener work
